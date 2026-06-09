@@ -1,43 +1,56 @@
 <template>
   <div class="page">
-    <h1 class="page-title">Date View — {{ route.params.id }}</h1>
-    <p class="page-description">Viewing tasks for a specific date.</p>
-    <div class="placeholder-card">
-      <p class="placeholder-text">Content coming soon</p>
+    <header class="page-header">
+      <h1 class="page-title">{{ displayDate }}</h1>
+      <p class="page-description">Tasks for {{ displayDate }}.</p>
+    </header>
+    <div class="board-area">
+      <BoardKanbanBoard :context="`date-${route.params.id}`" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 definePageMeta({
   layout: 'dashboard'
 })
 
 const route = useRoute()
+
+const displayDate = computed(() => {
+  const id = route.params.id as string
+  return id || 'Date View'
+})
 </script>
 
 <style scoped>
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.page-header {
+  flex-shrink: 0;
+  margin-bottom: var(--space-6);
+}
+
 .page-title {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.04em;
   margin-bottom: var(--space-1);
 }
+
 .page-description {
   color: var(--text-secondary);
   font-size: 14px;
-  margin-bottom: var(--space-8);
 }
-.placeholder-card {
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius-large);
-  padding: var(--space-12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.placeholder-text {
-  color: var(--text-muted);
-  font-size: 14px;
+
+.board-area {
+  flex: 1;
+  min-height: 0;
 }
 </style>

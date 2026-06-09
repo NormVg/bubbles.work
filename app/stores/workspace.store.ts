@@ -27,9 +27,21 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     addWorkspace(name: string) {
       const id = name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now()
-      const color = COLORS[Math.floor(Math.random() * COLORS.length)]
+      
+      const usedColors = new Set(this.workspaces.map(w => w.color))
+      const availableColors = COLORS.filter(c => !usedColors.has(c))
+      
+      let color: string
+      if (availableColors.length > 0) {
+        color = availableColors[Math.floor(Math.random() * availableColors.length)]
+      } else {
+        // Fallback to random hex if all predefined colors are used
+        color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')
+      }
+      
       this.workspaces.push({ id, name, type: 'custom', color })
       this.activeWorkspaceId = id
     }
-  }
+  },
+  persist: true
 })

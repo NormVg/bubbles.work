@@ -100,6 +100,12 @@
           label="Bubbles.ai"
           :isCollapsed="uiStore.isSidebarCollapsed"
         />
+        <LayoutSidebarItem 
+          to="/dashboard/settings"
+          :icon="Settings"
+          label="Settings"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
       </nav>
 
       <hr v-if="!uiStore.isSidebarCollapsed" class="nav-divider" />
@@ -143,7 +149,8 @@ import {
   CalendarDays,
   PenLine,
   Sparkles,
-  Plus
+  Plus,
+  Settings
 } from '@lucide/vue'
 
 const uiStore = useUIStore()

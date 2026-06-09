@@ -110,5 +110,6 @@ export const useCategoryStore = defineStore('category', {
         category.tasks = category.tasks.filter(t => t.id !== taskId)
       }
     }
-  }
+  },
+  persist: true
 })

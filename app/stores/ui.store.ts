@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 export const useUIStore = defineStore('ui', {
   state: () => ({
     isSidebarCollapsed: false,
+    activeTaskId: null as string | null
   }),
   actions: {
     toggleSidebar() {
@@ -10,6 +11,13 @@ export const useUIStore = defineStore('ui', {
     },
     setSidebarCollapsed(value: boolean) {
       this.isSidebarCollapsed = value
+    },
+    openTaskDrawer(taskId: string) {
+      this.activeTaskId = taskId
+    },
+    closeTaskDrawer() {
+      this.activeTaskId = null
     }
-  }
+  },
+  persist: true
 })

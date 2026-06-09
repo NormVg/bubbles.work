@@ -18,7 +18,7 @@ export function getSidebarDates() {
     const monthName = months[d.getMonth()]
     
     dates.push({
-      id: d.toISOString(),
+      id: d.toISOString().split('T')[0],
       label: `${dayName} ${dateNum} ${monthName}` // e.g., Thu 11 Jun
     })
   }

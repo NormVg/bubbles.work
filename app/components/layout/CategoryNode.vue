@@ -34,21 +34,23 @@
           :depth="depth + 1" 
         />
 
-        <!-- Tasks -->
-        <div 
+        <!-- Topics -->
+        <NuxtLink 
           v-for="task in category.tasks" 
           :key="task.id" 
+          :to="`/dashboard/topic/${task.id}`"
           class="row task-row"
+          :class="{ 'is-active': $route.path === `/dashboard/topic/${task.id}` }"
           :style="{ paddingLeft: `${28 + depth * 16}px` }"
         >
           <Circle :size="12" :stroke-width="1.5" class="task-icon" />
           <span class="row-label">{{ task.name }}</span>
-          <div class="row-actions" @click.stop>
-            <button class="action-btn danger" @click="removeTask(task.id)" aria-label="Remove Task">
+          <div class="row-actions" @click.prevent>
+            <button class="action-btn danger" @click.prevent="removeTask(task.id)" aria-label="Remove Topic">
               <Trash2 :size="12" :stroke-width="1.5" />
             </button>
           </div>
-        </div>
+        </NuxtLink>
       </div>
     </div>
   </div>
@@ -100,9 +102,10 @@ function removeTask(taskId: string) {
   font-size: 13px;
   transition: background-color 100ms ease;
   margin: 4px var(--space-2);
+  text-decoration: none;
 }
 
-.row:hover {
+.row:hover, .row.is-active {
   background-color: var(--bg-hover);
 }
 

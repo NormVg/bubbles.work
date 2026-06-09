@@ -1,11 +1,18 @@
 <template>
   <div class="dashboard-layout">
-    <LayoutSidebar />
+    <ClientOnly>
+      <LayoutSidebar />
+    </ClientOnly>
     <main class="main-content">
       <div class="content-container">
-        <slot />
+        <ClientOnly>
+          <slot />
+        </ClientOnly>
       </div>
     </main>
+    <ClientOnly>
+      <BoardTaskDrawer />
+    </ClientOnly>
   </div>
 </template>
 
@@ -14,6 +21,13 @@
   display: flex;
   height: 100vh;
   background-color: var(--bg-surface-1);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--border-default),
+    var(--border-default) 1px,
+    transparent 1px,
+    transparent 8px
+  );
   overflow: hidden;
 }
 
@@ -25,10 +39,13 @@
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-default);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-container {
   padding: var(--space-8);
-  max-width: 1000px;
+  flex: 1;
+  min-height: 0;
 }
 </style>
