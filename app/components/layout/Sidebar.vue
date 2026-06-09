@@ -3,6 +3,7 @@
     class="sidebar"
     :class="{ 'is-collapsed': uiStore.isSidebarCollapsed }"
   >
+    <!-- Branding + Toggle -->
     <div class="sidebar-header">
       <Transition name="fade">
         <span v-if="!uiStore.isSidebarCollapsed" class="app-title">Bubbles.work</span>
@@ -16,42 +17,103 @@
           <PanelLeftClose 
             v-if="!uiStore.isSidebarCollapsed" 
             key="close" 
-            :size="18" 
+            :size="16" 
             :stroke-width="1.5" 
           />
           <PanelLeftOpen 
             v-else 
             key="open" 
-            :size="18" 
+            :size="16" 
             :stroke-width="1.5" 
           />
         </Transition>
       </button>
     </div>
 
-    <nav class="sidebar-nav">
-      <LayoutSidebarItem 
-        to="/dashboard"
-        :icon="LayoutDashboard"
-        label="Dashboard"
-        :isCollapsed="uiStore.isSidebarCollapsed"
-      />
-      <LayoutSidebarItem 
-        to="/dashboard/messages"
-        :icon="Mail"
-        label="Messages"
-        :isCollapsed="uiStore.isSidebarCollapsed"
-      />
-      <LayoutSidebarItem 
-        to="/dashboard/settings"
-        :icon="Settings"
-        label="Settings"
-        :isCollapsed="uiStore.isSidebarCollapsed"
-      />
-    </nav>
+    <!-- Workspace Switcher -->
+    <div v-if="!uiStore.isSidebarCollapsed" class="workspace-area">
+      <LayoutWorkspaceSwitcher :isCollapsed="uiStore.isSidebarCollapsed" />
+    </div>
 
+    <!-- Scrollable Nav -->
+    <div class="sidebar-scroll">
+      
+      <!-- Date Navigation -->
+      <nav class="nav-section">
+        <LayoutSidebarItem 
+          to="/dashboard/today"
+          :icon="Sun"
+          label="Today"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        >
+          <template #action>
+            <button class="inline-action" aria-label="Add today" @click.prevent="addAction('today')">
+              <Plus :size="14" :stroke-width="1.5" />
+            </button>
+          </template>
+        </LayoutSidebarItem>
+        
+        <LayoutSidebarItem 
+          to="/dashboard/tomorrow"
+          :icon="Sunrise"
+          label="Tomorrow"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
+
+        <LayoutSidebarItem 
+          v-for="date in dynamicDates"
+          :key="date.id"
+          :to="`/dashboard/date/${date.id}`"
+          :icon="CalendarIcon"
+          :label="date.label"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
+
+        <LayoutSidebarItem 
+          to="/dashboard/yesterday"
+          :icon="History"
+          label="Yesterday"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
+        
+        <LayoutSidebarItem 
+          to="/dashboard/calendar"
+          :icon="CalendarDays"
+          label="Calendar"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
+      </nav>
+
+      <hr v-if="!uiStore.isSidebarCollapsed" class="nav-divider" />
+
+      <!-- Tools -->
+      <nav class="nav-section">
+        <LayoutSidebarItem 
+          to="/dashboard/create"
+          :icon="PenLine"
+          label="Create"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
+        <LayoutSidebarItem 
+          to="/dashboard/bubbles-ai"
+          :icon="Sparkles"
+          label="Bubbles.ai"
+          :isCollapsed="uiStore.isSidebarCollapsed"
+        />
+      </nav>
+
+      <hr v-if="!uiStore.isSidebarCollapsed" class="nav-divider" />
+
+      <!-- Categories -->
+      <div v-if="!uiStore.isSidebarCollapsed" class="nav-section categories-section">
+        <LayoutCategoryTree />
+      </div>
+
+    </div>
+
+    <!-- Footer -->
     <div class="sidebar-footer">
-      <div class="user-row">
+      <div class="user-row" :class="{ 'is-collapsed': uiStore.isSidebarCollapsed }">
         <div class="avatar">
           <User :size="14" :stroke-width="1.5" />
         </div>
@@ -67,19 +129,38 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useUIStore } from '~/stores/ui.store'
-import { PanelLeftClose, PanelLeftOpen, LayoutDashboard, Mail, Settings, User } from '@lucide/vue'
+import { getSidebarDates } from '~/utils/date.utils'
+import { 
+  PanelLeftClose, 
+  PanelLeftOpen, 
+  User, 
+  Sun,
+  Sunrise,
+  History,
+  Calendar as CalendarIcon,
+  CalendarDays,
+  PenLine,
+  Sparkles,
+  Plus
+} from '@lucide/vue'
 
 const uiStore = useUIStore()
+const dynamicDates = ref(getSidebarDates())
 
 function toggle() {
   uiStore.toggleSidebar()
+}
+
+function addAction(context: string) {
+  alert(`Add action triggered for: ${context}`)
 }
 </script>
 
 <style scoped>
 .sidebar {
-  width: 220px;
+  width: 250px;
   height: 100vh;
   background-color: var(--bg-surface-1);
   display: flex;
@@ -90,22 +171,22 @@ function toggle() {
 }
 
 .sidebar.is-collapsed {
-  width: 56px;
+  width: 60px;
 }
 
+/* ── Header ── */
 .sidebar-header {
-  height: 52px;
+  height: 48px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-4);
   flex-shrink: 0;
 }
 
 .app-title {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   white-space: nowrap;
   color: var(--text-primary);
 }
@@ -135,14 +216,65 @@ function toggle() {
   transform: scale(0.92);
 }
 
-.sidebar-nav {
-  flex: 1;
-  padding: var(--space-2) var(--space-2);
-  overflow-y: auto;
+/* ── Workspace ── */
+.workspace-area {
+  padding: 0 var(--space-3) var(--space-3);
+  flex-shrink: 0;
 }
 
+/* ── Scrollable ── */
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-section {
+  padding: var(--space-1) var(--space-2);
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-divider {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 0 var(--space-4);
+  height: 1px;
+}
+
+.categories-section {
+  padding: 0;
+}
+
+.inline-action {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-micro);
+  transition: all 120ms ease;
+  opacity: 0;
+}
+
+:deep(.sidebar-item:hover) .inline-action {
+  opacity: 1;
+}
+
+.inline-action:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Footer ── */
 .sidebar-footer {
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-3);
   flex-shrink: 0;
 }
 
@@ -152,6 +284,11 @@ function toggle() {
   gap: var(--space-2);
   padding: 0 var(--space-1);
   height: 32px;
+}
+
+.user-row.is-collapsed {
+  justify-content: center;
+  padding: 0;
 }
 
 .avatar {
@@ -172,9 +309,10 @@ function toggle() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
 }
 
-/* ── Fade for text ── */
+/* ── Transitions ── */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 120ms ease;
@@ -184,7 +322,6 @@ function toggle() {
   opacity: 0;
 }
 
-/* ── Icon Morph (Maya icon swap) ── */
 .icon-morph-enter-active {
   transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease;
 }

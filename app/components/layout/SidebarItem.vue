@@ -5,11 +5,14 @@
     :class="{ 'is-collapsed': isCollapsed }"
   >
     <div class="icon-wrapper">
-      <component :is="icon" :size="18" :stroke-width="1.5" />
+      <component :is="icon" :size="16" :stroke-width="1.5" />
     </div>
     <Transition name="fade">
       <span v-if="!isCollapsed" class="label">{{ label }}</span>
     </Transition>
+    <div v-if="!isCollapsed" class="action-wrapper" @click.prevent>
+      <slot name="action" />
+    </div>
   </NuxtLink>
 </template>
 
@@ -28,13 +31,13 @@ defineProps<{
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-3);
-  height: 34px;
+  height: 32px;
   border-radius: var(--radius-medium);
   text-decoration: none;
   color: var(--text-secondary);
   font-size: 13px;
-  transition: color 120ms ease, background-color 120ms ease;
-  margin-bottom: 2px;
+  transition: color 100ms ease, background-color 100ms ease;
+  margin-bottom: 1px;
 }
 
 .sidebar-item:hover {
@@ -43,7 +46,7 @@ defineProps<{
 }
 
 .sidebar-item:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
 }
 
 .router-link-active {
@@ -56,12 +59,21 @@ defineProps<{
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
+  width: 16px;
   flex-shrink: 0;
 }
 
 .label {
   white-space: nowrap;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-wrapper {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
 }
 
 .fade-enter-active,
