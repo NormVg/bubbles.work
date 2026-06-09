@@ -99,7 +99,7 @@ function removeTask(taskId: string) {
   color: var(--text-secondary);
   font-size: 13px;
   transition: background-color 100ms ease;
-  margin: 0 var(--space-2);
+  margin: 4px var(--space-2);
 }
 
 .row:hover {

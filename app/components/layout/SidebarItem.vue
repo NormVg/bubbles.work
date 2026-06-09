@@ -37,7 +37,7 @@ defineProps<{
   color: var(--text-secondary);
   font-size: 13px;
   transition: color 100ms ease, background-color 100ms ease;
-  margin-bottom: 1px;
+  margin-bottom: 4px;
 }
 
 .sidebar-item:hover {

@@ -37,21 +37,22 @@
 }
 
 html.dark {
-  /* ──── Dark Mode (Vercel) ──── */
+  /* ──── Dark Mode (True Black / High Contrast) ──── */
   --bg-root: #0A0A0A;
-  --bg-surface-1: #111111;
-  --bg-surface-2: #191919;
-  --bg-surface-3: #232323;
-  --bg-hover: rgba(255, 255, 255, 0.05);
-  --bg-active: rgba(255, 255, 255, 0.08);
+  --bg-surface-1: #0E0E0E;
+  --bg-surface-2: #141414;
+  --bg-surface-3: #1A1A1A;
+  
+  --bg-hover: #1A1A1A;
+  --bg-active: #222222;
 
-  --border-default: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --border-hover: rgba(255, 255, 255, 0.2);
+  --border-default: #222222;
+  --border-strong: #333333;
+  --border-hover: #444444;
   --border-focus: #FFFFFF;
 
-  --text-primary: #EDEDED;
-  --text-secondary: #A1A1A1;
+  --text-primary: #FFFFFF;
+  --text-secondary: #888888;
   --text-muted: #666666;
 
   --focus-ring-color: #FFFFFF;
