@@ -28,8 +28,8 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  const model = ollama(aiModel || 'llama3.1')
-  
+  const model = ollama(aiModel)
+
   let aiPrompt = ''
   if (previousDraft && revisionPrompt) {
     aiPrompt = `You previously drafted these tasks:\n"""\n${JSON.stringify(previousDraft, null, 2)}\n"""\n\nThe user wants you to revise this draft based on these instructions:\n"""\n${revisionPrompt}\n"""\n\nPlease output the complete, newly revised list of tasks. Apply the user's requested changes to the previous draft.`
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (categoryContext && categoryContext.length > 0) {
-    aiPrompt += `\n\nExisting Workspace Structure (Categories and Topics):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nPlease organize the tasks into appropriate categories and topics (columns). Use existing ones if they match, otherwise propose new ones.`
+    aiPrompt += `\n\nExisting Categories and Topics (this is the user's project organization):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nIMPORTANT: Categories are like project folders (e.g. "Design Assets", "Project Alpha"). Topics are sub-sections within a category (e.g. "Brand", "Sprint planning"). You SHOULD assign tasks to matching categories and topics when they clearly fit. If no existing category matches, you can propose a new categoryName. If no topic matches, you can propose a new topicName. Only leave categoryName empty if the task truly doesn't belong to any project/category.`
   }
 
   if (propertiesSchema && propertiesSchema.length > 0) {
@@ -54,10 +54,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (existingTasks && existingTasks.length > 0) {
-    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: ONLY set "action" to "update" if the user EXPLICITLY asks to update, modify, or change a specific task. If the user is just listing tasks or brain dumping, ALWAYS set "action" to "create", even if the task title sounds similar to an existing task. DO NOT blindly update tasks unless explicitly requested.`
+    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nIMPORTANT: Only set "action" to "update" if the user EXPLICITLY asks to modify, change, or update a specific existing task. Do NOT mark tasks as "update" just because they have a similar title. Default to "create" for new tasks. If a task truly needs updating, set "taskId" to the existing task's id.`
   }
 
-  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [\n    { "name": "Reviewer", "type": "text" }\n  ],\n  "tasks": [\n    {\n      "action": "create" | "update",\n      "taskId": "task-123",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" },\n        { "name": "Reviewer", "value": "John" }\n      ]\n    }\n  ]\n}`
+  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [],\n  "tasks": [\n    {\n      "action": "create",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h",\n      "context": "today",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" }\n      ]\n    }\n  ]\n}`
 
   try {
     const result = await generateObject({
@@ -72,8 +72,8 @@ export default defineEventHandler(async (event) => {
           taskId: z.string().optional().describe('The ID of the existing task to update. Required ONLY if action is update.'),
           title: z.string().describe('A concise, actionable title for the task.'),
           workspaceId: z.string().describe('The ID of the workspace this task belongs to (e.g. personal, professional, or a custom id).'),
-          categoryName: z.string().optional().describe('The name of the category this task belongs to. You MUST assign a logical category (e.g. "Household", "Project Alpha"). Default to "Inbox" ONLY if absolutely no category makes sense.'),
-          topicName: z.string().optional().describe('The name of the topic/column within the category. You MUST assign a logical topic (e.g. "Chores", "Frontend"). Default to "To Do" ONLY if absolutely no topic makes sense.'),
+          categoryName: z.string().optional().describe('The name of the category this task belongs to. Use existing if appropriate, or propose a new one.'),
+          topicName: z.string().optional().describe('The name of the topic/column within the category. Use existing if appropriate, or propose a new one.'),
           priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h for High, opt-m for Medium, opt-l for Low.'),
           context: z.enum(['today', 'tomorrow', 'someday']).describe('today, tomorrow, or someday based on the urgency mentioned in the prompt. default to today if unspecified.'),
           description: z.string().optional().describe('Additional context or details about the task.'),

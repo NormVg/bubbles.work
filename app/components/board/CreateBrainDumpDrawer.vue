@@ -52,7 +52,7 @@
             <div v-if="viewState === 'review'" class="review-stage">
               <div class="review-header">
                 <h3>Review Draft</h3>
-                <p>The AI extracted these tasks from your input. Review and edit before adding.</p>
+                <p>Review, edit, and confirm before adding to the board.</p>
               </div>
               
               <div class="drafts-container">
@@ -68,46 +68,67 @@
 
                 <div class="draft-list">
                   <div v-for="(task, index) in draftTasks" :key="index" class="draft-card">
+                    <!-- Title row -->
                     <div class="draft-card-header">
-                      <div class="draft-header-meta">
-                        <span class="draft-action interactive" :class="task.action === 'update' ? 'action-update' : 'action-create'" @click="task.action = task.action === 'create' ? 'update' : 'create'" title="Click to toggle between Create and Update">
-                          {{ task.action.toUpperCase() }}
-                        </span>
-                        <select class="draft-priority interactive-select" :class="'prio-' + task.priority" v-model="task.priority">
-                          <option value="opt-h">HIGH</option>
-                          <option value="opt-m">MEDIUM</option>
-                          <option value="opt-l">LOW</option>
-                        </select>
+                      <div class="draft-title-row">
+                        <span v-if="task.action === 'update'" class="update-badge">UPDATE</span>
+                        <input 
+                          v-model="task.title" 
+                          class="draft-title-input" 
+                          type="text" 
+                          placeholder="Task title…"
+                        />
                       </div>
-                      <span class="draft-title">{{ task.title }}</span>
+                      <button class="draft-remove-btn" @click="removeDraftTask(index)" title="Remove task">
+                        <X :size="14" />
+                      </button>
                     </div>
+
+                    <!-- Editable meta row -->
                     <div class="draft-meta">
-                      <div class="meta-pill">
-                        <Briefcase v-if="task.workspaceId === 'professional'" :size="12" />
-                        <User v-else-if="task.workspaceId === 'personal'" :size="12" />
-                        <Folder v-else :size="12" />
-                        <select v-model="task.workspaceId" class="meta-select">
-                          <option v-for="ws in workspaceStore.workspaces" :key="ws.id" :value="ws.id">{{ ws.name }}</option>
-                        </select>
-                      </div>
-                      <div class="meta-pill">
-                        <FolderTree :size="12" />
-                        <input v-model="task.categoryName" class="meta-input" placeholder="Inbox" />
-                      </div>
-                      <div class="meta-pill">
-                        <Columns :size="12" />
-                        <input v-model="task.topicName" class="meta-input" placeholder="To Do" />
-                      </div>
+                      <!-- Priority -->
+                      <select v-model="task.priority" class="meta-select prio-select" :class="'prio-' + task.priority">
+                        <option value="opt-h">High</option>
+                        <option value="opt-m">Medium</option>
+                        <option value="opt-l">Low</option>
+                      </select>
+
+                      <!-- Workspace -->
+                      <select v-model="task.workspaceId" class="meta-select">
+                        <option v-for="ws in editableWorkspaces" :key="ws.id" :value="ws.id">{{ ws.name }}</option>
+                      </select>
+
+                      <!-- Category -->
+                      <select v-model="task.categoryName" class="meta-select">
+                        <option value="">No Category</option>
+                        <option v-for="cat in categoryStore.categories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
+                      </select>
+
+                      <!-- Topic (dynamic based on category) -->
+                      <select v-model="task.topicName" class="meta-select">
+                        <option value="">Default</option>
+                        <option 
+                          v-for="topic in getTopicsForCategory(task.categoryName)" 
+                          :key="topic.id" 
+                          :value="topic.name"
+                        >{{ topic.name }}</option>
+                      </select>
+
+                      <!-- Context -->
+                      <select v-model="task.context" class="meta-select">
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="someday">Someday</option>
+                      </select>
                     </div>
+
                     <p v-if="task.description" class="draft-desc">{{ task.description }}</p>
+                    
                     <div v-if="task.customProperties && task.customProperties.length > 0" class="draft-custom-props">
                       <div v-for="(cp, i) in task.customProperties" :key="i" class="draft-custom-prop">
                         <span class="cp-name">{{ cp.name }}:</span>
                         <span class="cp-value">{{ cp.value }}</span>
                       </div>
-                    </div>
-                    <div class="draft-footer">
-                      <span class="draft-context">Context: {{ task.context }}</span>
                     </div>
                   </div>
                 </div>
@@ -150,8 +171,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
-import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check, FolderTree, Columns, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon, Paperclip, Cpu, CornerDownLeft, Briefcase, User, Folder } from '@lucide/vue'
+import { ref, watch, onBeforeUnmount, computed } from 'vue'
+import { X, Loader2, AlertCircle, ArrowUp, Check, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon, CornerDownLeft } from '@lucide/vue'
 import { useUIStore } from '~/stores/ui.store'
 import { useSettingsStore } from '~/stores/settings.store'
 import { useTaskStore } from '~/stores/task.store'
@@ -180,7 +201,6 @@ const dumpText = ref('')
 const draftTasks = ref<any[]>([])
 const draftProperties = ref<any[]>([])
 const revisionText = ref('')
-const isRecording = ref(false)
 const isRevising = ref(false)
 const error = ref('')
 
@@ -190,6 +210,10 @@ let editor: Editor | null = null
 const isEditorEmpty = computed(() => {
   if (!editor) return true
   return editor.isEmpty
+})
+
+const editableWorkspaces = computed(() => {
+  return workspaceStore.workspaces.filter(w => w.id !== 'all')
 })
 
 watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
@@ -368,11 +392,17 @@ function close() {
   error.value = ''
 }
 
-function formatPriority(p: string) {
-  if (p === 'opt-h') return 'High'
-  if (p === 'opt-m') return 'Medium'
-  if (p === 'opt-l') return 'Low'
-  return p
+function getTopicsForCategory(categoryName: string) {
+  if (!categoryName) return []
+  const cat = categoryStore.categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase())
+  return cat ? cat.tasks : []
+}
+
+function removeDraftTask(index: number) {
+  draftTasks.value.splice(index, 1)
+  if (draftTasks.value.length === 0) {
+    viewState.value = 'input'
+  }
 }
 
 function getCategoryContext() {
@@ -382,18 +412,13 @@ function getCategoryContext() {
   }))
 }
 
-function getWorkspaceName(id: string) {
-  if (!id) return 'Personal'
-  const ws = workspaceStore.workspaces.find(w => w.id === id)
-  return ws ? ws.name : 'Personal'
-}
-
 function getExistingTasks() {
   return taskStore.tasks.map(t => ({
     id: t.id,
     title: t.title,
     priority: t.customProperties?.['prop-priority'],
     context: t.context,
+    workspaceId: t.workspaceId,
     description: t.description || ''
   }))
 }
@@ -468,6 +493,38 @@ async function reviseDraft() {
   isRevising.value = false
 }
 
+/** Find or create a category + topic, return the topic task ID to use as context */
+function resolveTopicId(categoryName: string, topicName?: string): string | null {
+  if (!categoryName) return null
+  
+  // Find or create category
+  let cat = categoryStore.categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase())
+  if (!cat) {
+    categoryStore.addCategory(null, categoryName)
+    cat = categoryStore.categories[categoryStore.categories.length - 1]
+  }
+  if (!cat) return null
+  
+  // Find or create topic inside category
+  if (topicName) {
+    let topic = cat.tasks.find(tk => tk.name.toLowerCase() === topicName.toLowerCase())
+    if (!topic) {
+      categoryStore.addTask(cat.id, topicName)
+      topic = cat.tasks[cat.tasks.length - 1]
+    }
+    return topic?.id || null
+  }
+  
+  // If no topic specified but category has tasks, use the first one
+  if (cat.tasks.length > 0) {
+    return cat.tasks[0].id
+  }
+  
+  // Create a default topic for the category
+  categoryStore.addTask(cat.id, 'General')
+  return cat.tasks[cat.tasks.length - 1]?.id || null
+}
+
 function confirmAndAdd() {
   if (!draftTasks.value.length) return
   
@@ -496,7 +553,6 @@ function confirmAndAdd() {
       if (propId) {
         const schema = taskStore.propertiesSchema.find(x => x.id === propId)
         if (schema && schema.type === 'select') {
-          // Check if option exists
           const existingOpt = schema.options?.find(o => o.label.toLowerCase() === String(cp.value).toLowerCase())
           if (existingOpt) {
             taskStore.updateCustomProperty(taskId, propId, existingOpt.id)
@@ -514,56 +570,35 @@ function confirmAndAdd() {
   }
   
   draftTasks.value.forEach(t => {
-    if (t.action === 'update') {
-      let existing = null
-      if (t.taskId) existing = taskStore.tasks.find(x => x.id === t.taskId)
-      
+    // ─── UPDATE existing task ───
+    if (t.action === 'update' && t.taskId) {
+      const existing = taskStore.tasks.find(x => x.id === t.taskId)
       if (existing) {
-        if (t.title) taskStore.updateTaskTitle(t.taskId!, t.title)
-        if (t.priority) taskStore.updateCustomProperty(t.taskId!, 'prop-priority', t.priority)
-        if (t.description) taskStore.updateTaskField(t.taskId!, 'description', `<p>${t.description}</p>`)
-        if (t.context) {
-           taskStore.updateTaskField(t.taskId!, 'context', t.context)
+        if (t.title) taskStore.updateTaskTitle(t.taskId, t.title)
+        if (t.priority) taskStore.updateCustomProperty(t.taskId, 'prop-priority', t.priority)
+        if (t.description) taskStore.updateTaskField(t.taskId, 'description', `<p>${t.description}</p>`)
+        if (t.workspaceId) taskStore.updateTaskField(t.taskId, 'workspaceId', t.workspaceId)
+        applyCustomProperties(t.taskId, t.customProperties)
+        
+        // Handle context change via category/topic
+        let newContext = t.context || existing.context
+        if (t.categoryName) {
+          const topicId = resolveTopicId(t.categoryName, t.topicName)
+          if (topicId) newContext = topicId
         }
-        applyCustomProperties(t.taskId!, t.customProperties || [])
-        return
-      } else {
-        // Fallback: AI marked as update but task not found. Convert to create.
-        t.action = 'create'
+        if (newContext !== existing.context) {
+          taskStore.updateTaskField(t.taskId, 'context', newContext)
+        }
       }
+      return
     }
 
-    let catId = null
-    let topicId = null
-    
-    // 1. Find or create category
-    if (t.categoryName) {
-      const existingCat = categoryStore.categories.find(c => c.name.toLowerCase() === t.categoryName.toLowerCase())
-      if (existingCat) {
-        catId = existingCat.id
-      } else {
-        categoryStore.addCategory(null, t.categoryName)
-        catId = categoryStore.categories[categoryStore.categories.length - 1].id
-      }
-    }
-    
-    // 2. Find or create topic inside category
-    if (catId && t.topicName) {
-      const cat = categoryStore.categories.find(c => c.id === catId)
-      if (cat) {
-        const existingTopic = cat.tasks.find(tk => tk.name.toLowerCase() === t.topicName.toLowerCase())
-        if (existingTopic) {
-          topicId = existingTopic.id
-        } else {
-          categoryStore.addTask(cat.id, t.topicName)
-          topicId = cat.tasks[cat.tasks.length - 1].id
-        }
-      }
-    }
-    
+    // ─── CREATE new task ───
     let taskContext = t.context || 'today'
-    if (topicId) {
-      taskContext = topicId
+    
+    if (t.categoryName) {
+      const topicId = resolveTopicId(t.categoryName, t.topicName)
+      if (topicId) taskContext = topicId
     }
 
     taskStore.addTask(t.title, taskContext, 'open', t.workspaceId)
@@ -655,7 +690,7 @@ html.dark .drawer-content {
   flex-direction: column;
 }
 
-/* ── Editor UI (Markdown Style) ── */
+/* ── Editor UI ── */
 .input-stage, .review-stage {
   display: flex;
   flex-direction: column;
@@ -768,11 +803,6 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   cursor: not-allowed;
 }
 
-.is-drafting {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 /* ── Review UI ── */
 .review-header {
   margin-bottom: var(--space-6);
@@ -795,120 +825,206 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   line-height: 1.5;
 }
 
+.drafts-container {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: var(--space-4);
+}
+
 .draft-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: var(--space-8);
+  gap: 12px;
 }
 
 .draft-card {
   background-color: var(--bg-root);
   border: 1px solid var(--border-default);
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
 .draft-card:hover {
   border-color: var(--border-strong);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
-  transform: translateY(-1px);
-}
-
-.draft-header-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
 }
 
 .draft-card-header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
-.draft-action {
+.draft-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.draft-title-input {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  outline: none;
+  padding: 2px 0;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  transition: border-color 150ms ease;
+}
+
+.draft-title-input:focus {
+  border-bottom-color: var(--border-strong);
+}
+
+.draft-remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: var(--radius-small);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.draft-card:hover .draft-remove-btn {
+  opacity: 1;
+}
+
+.draft-remove-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.update-badge {
   font-size: 10px;
   font-weight: 700;
+  color: var(--text-on-primary, #ffffff);
+  background-color: var(--text-primary);
   padding: 3px 6px;
   border-radius: 4px;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
+  flex-shrink: 0;
 }
-.action-update { background-color: var(--text-primary); color: var(--bg-root); }
-.action-create { background-color: var(--bg-surface-2); color: var(--text-secondary); border: 1px solid var(--border-default); }
-
-.draft-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.4;
-  letter-spacing: -0.01em;
-}
-
-.draft-priority {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: 1px solid transparent;
-}
-.prio-opt-h { background-color: rgba(239, 68, 68, 0.05); color: #ef4444; border-color: rgba(239, 68, 68, 0.15); }
-.prio-opt-m { background-color: rgba(245, 158, 11, 0.05); color: #f59e0b; border-color: rgba(245, 158, 11, 0.15); }
-.prio-opt-l { background-color: rgba(59, 130, 246, 0.05); color: #3b82f6; border-color: rgba(59, 130, 246, 0.15); }
 
 .draft-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
-.meta-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* Native select styled as a meta pill */
+.meta-select {
+  appearance: none;
+  -webkit-appearance: none;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
   background-color: var(--bg-surface-2);
-  padding: 4px 10px;
+  padding: 4px 22px 4px 8px;
   border-radius: 6px;
   border: 1px solid var(--border-default);
-  transition: background-color 150ms ease;
+  cursor: pointer;
+  transition: all 150ms ease;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  max-width: 140px;
+  text-overflow: ellipsis;
 }
 
-.meta-pill:hover {
+.meta-select:hover {
+  border-color: var(--border-strong);
   background-color: var(--border-default);
 }
 
-.draft-desc {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.6;
+.meta-select:focus {
+  border-color: var(--text-primary);
 }
 
-.draft-custom-prop span {
-  color: var(--text-primary);
+.prio-select.prio-opt-h { color: #ef4444; border-color: rgba(239, 68, 68, 0.2); background-color: rgba(239, 68, 68, 0.06); }
+.prio-select.prio-opt-m { color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); background-color: rgba(245, 158, 11, 0.06); }
+.prio-select.prio-opt-l { color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); background-color: rgba(59, 130, 246, 0.06); }
+
+.draft-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.draft-custom-props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draft-custom-prop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  background-color: var(--bg-surface-2);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.cp-name {
+  color: var(--text-muted);
   font-weight: 500;
 }
 
-.draft-footer {
+.cp-value {
+  color: var(--text-secondary);
+}
+
+/* ── New Properties Alert ── */
+.new-props-alert {
+  background-color: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.new-props-title {
   font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 4px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.new-props-list {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.new-prop-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+  padding: 3px 8px;
+  border-radius: 4px;
 }
 
 /* ── Revision Box ── */
@@ -922,6 +1038,7 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   margin-bottom: var(--space-6);
   transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  flex-shrink: 0;
 }
 
 .revision-box:focus-within {
@@ -973,9 +1090,9 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: auto;
-  padding-top: var(--space-6);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-default);
+  flex-shrink: 0;
 }
 
 .btn {
@@ -999,16 +1116,6 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 
 .btn-secondary:hover {
   background-color: var(--border-default);
-}
-
-.btn-primary {
-  background-color: var(--text-primary);
-  color: var(--bg-root);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
 }
 
 .btn-primary {
@@ -1065,50 +1172,16 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   transform: translateX(100%);
 }
 
-/* Interactive UI overrides */
-.interactive {
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.interactive:hover {
-  opacity: 0.8;
-}
-
-.interactive-select {
-  appearance: none;
-  -webkit-appearance: none;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  letter-spacing: inherit;
-  padding: 0;
-  outline: none;
-}
-.interactive-select:focus {
-  outline: none;
-}
-
-.meta-select, .meta-input {
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  outline: none;
-  margin: 0;
-  padding: 0;
-  min-width: 60px;
-}
-.meta-select {
-  cursor: pointer;
-}
-.meta-input {
-  cursor: text;
-}
-.meta-input::placeholder {
-  color: var(--text-muted);
+@media (max-width: 640px) {
+  .drawer-body {
+    padding: var(--space-2) var(--space-4) var(--space-8) var(--space-4);
+  }
+  .draft-meta {
+    gap: 4px;
+  }
+  .meta-select {
+    max-width: 110px;
+    font-size: 11px;
+  }
 }
 </style>
