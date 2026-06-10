@@ -589,8 +589,9 @@ function confirmAndAdd() {
         if (newContext !== existing.context) {
           taskStore.updateTaskField(t.taskId, 'context', newContext)
         }
+        return // Successfully updated — skip create
       }
-      return
+      // Task not found — fall through to CREATE instead of silently failing
     }
 
     // ─── CREATE new task ───

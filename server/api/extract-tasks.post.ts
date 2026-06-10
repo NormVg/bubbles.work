@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (existingTasks && existingTasks.length > 0) {
-    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nIMPORTANT: Only set "action" to "update" if the user EXPLICITLY asks to modify, change, or update a specific existing task. Do NOT mark tasks as "update" just because they have a similar title. Default to "create" for new tasks. If a task truly needs updating, set "taskId" to the existing task's id.`
+    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nIMPORTANT ABOUT UPDATES: Almost always use "action": "create". Only use "action": "update" if the user says words like "change", "modify", "update", "rename" referring to a SPECIFIC existing task by name. If the user is just adding new things, ALWAYS use "create" even if a similar task already exists.`
   }
 
   aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [],\n  "tasks": [\n    {\n      "action": "create",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h",\n      "context": "today",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" }\n      ]\n    }\n  ]\n}`
@@ -68,14 +68,14 @@ export default defineEventHandler(async (event) => {
           type: z.enum(['text', 'number', 'select', 'date']).describe('Type of the new property.')
         })).optional().describe('Any completely new properties the user wants to track globally on tasks.'),
         tasks: z.array(z.object({
-          action: z.enum(['create', 'update']).describe('Whether to create a new task or update an existing one. Default to create.'),
-          taskId: z.string().optional().describe('The ID of the existing task to update. Required ONLY if action is update.'),
+          action: z.enum(['create', 'update']).describe('ALMOST ALWAYS use create. Only use update when user explicitly says to change/modify a specific existing task.'),
+          taskId: z.string().optional().describe('Only required if action is update. Must be an exact id from the existing tasks list.'),
           title: z.string().describe('A concise, actionable title for the task.'),
-          workspaceId: z.string().describe('The ID of the workspace this task belongs to (e.g. personal, professional, or a custom id).'),
-          categoryName: z.string().optional().describe('The name of the category this task belongs to. Use existing if appropriate, or propose a new one.'),
-          topicName: z.string().optional().describe('The name of the topic/column within the category. Use existing if appropriate, or propose a new one.'),
-          priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h for High, opt-m for Medium, opt-l for Low.'),
-          context: z.enum(['today', 'tomorrow', 'someday']).describe('today, tomorrow, or someday based on the urgency mentioned in the prompt. default to today if unspecified.'),
+          workspaceId: z.string().describe('The workspace id. Use personal for personal life tasks, professional for work tasks.'),
+          categoryName: z.string().optional().describe('A project/category name. Use an existing one if it fits, or propose a new one. Leave empty only if the task is a standalone item.'),
+          topicName: z.string().optional().describe('A sub-section within the category. Use an existing topic if it fits, or propose a new one.'),
+          priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h = High, opt-m = Medium, opt-l = Low. Pick based on urgency.'),
+          context: z.enum(['today', 'tomorrow', 'someday']).describe('When should this be done? Use today for urgent/immediate, tomorrow for next day, someday for no specific deadline. Pay attention to temporal cues in the input.'),
           description: z.string().optional().describe('Additional context or details about the task.'),
           customProperties: z.array(z.object({
             name: z.string().describe('The name of the property. Must match an existing property name or one defined in newProperties.'),
