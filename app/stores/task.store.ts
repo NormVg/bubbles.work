@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useWorkspaceStore } from './workspace.store'
 
 export type TaskStatus = 'open' | 'live' | 'done'
 
@@ -42,6 +43,7 @@ export interface BoardTask {
   createdAt: string
   order: number
   description?: string
+  workspaceId?: string
 }
 
 export const useTaskStore = defineStore('tasks', {
@@ -68,42 +70,54 @@ export const useTaskStore = defineStore('tasks', {
       { 
         id: 'bt-1', identifier: '#T-235', title: 'Fix USDC payout issue for logged in users in dashboard', 
         status: 'open', customProperties: { 'prop-priority': 'opt-h' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0 
+        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional' 
       },
       { 
         id: 'bt-2', identifier: '#T-234', title: 'Allow users to export tables as CSV', 
         status: 'open', customProperties: { 'prop-priority': 'opt-m' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 1 
+        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 1, workspaceId: 'professional'
       },
       { 
         id: 'bt-3', identifier: '#T-236', title: 'Add Darkmode support', 
         status: 'open', customProperties: { 'prop-priority': 'opt-m' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 2 
+        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 2, workspaceId: 'professional'
       },
       { 
         id: 'bt-4', identifier: '#T-237', title: 'Write API documentation', 
         status: 'live', customProperties: { 'prop-priority': 'opt-l' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0 
+        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
       },
       { 
         id: 'bt-5', identifier: '#T-238', title: 'Review pull requests', 
         status: 'done', customProperties: { 'prop-priority': 'opt-h' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0 
+        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
       },
       { 
         id: 'bt-6', identifier: '#T-239', title: 'Deploy staging build', 
         status: 'open', customProperties: { 'prop-priority': 'opt-h' },
-        context: 'tomorrow', createdAt: '2026-06-10T00:00:00.000Z', order: 0 
+        context: 'tomorrow', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
       },
     ] as BoardTask[]
   }),
   getters: {
     getTasksByContext: (state) => {
-      return (context: string) => state.tasks.filter(t => t.context === context)
+      return (context: string) => {
+        const wsStore = useWorkspaceStore()
+        return state.tasks.filter(t => 
+          t.context === context && 
+          (wsStore.activeWorkspaceId === 'all' || t.workspaceId === wsStore.activeWorkspaceId || !t.workspaceId)
+        )
+      }
     },
     getTasksByStatus: (state) => {
-      return (context: string, status: TaskStatus) =>
-        state.tasks.filter(t => t.context === context && t.status === status)
+      return (context: string, status: TaskStatus) => {
+        const wsStore = useWorkspaceStore()
+        return state.tasks.filter(t => 
+          t.context === context && 
+          t.status === status &&
+          (wsStore.activeWorkspaceId === 'all' || t.workspaceId === wsStore.activeWorkspaceId || !t.workspaceId)
+        )
+      }
     }
   },
   actions: {
@@ -146,7 +160,10 @@ export const useTaskStore = defineStore('tasks', {
         }
       })
     },
-    addTask(title: string, context: string, status: TaskStatus = 'open') {
+    addTask(title: string, context: string, status: TaskStatus = 'open', workspaceId?: string) {
+      const wsStore = useWorkspaceStore()
+      const assignedWorkspaceId = workspaceId || (wsStore.activeWorkspaceId !== 'all' ? wsStore.activeWorkspaceId : 'personal')
+      
       const statusTasks = this.tasks.filter(t => t.context === context && t.status === status)
       const maxOrder = statusTasks.length > 0 ? Math.max(...statusTasks.map(t => t.order)) : -1
       
@@ -158,7 +175,8 @@ export const useTaskStore = defineStore('tasks', {
         customProperties: { 'prop-priority': 'opt-m' },
         context,
         createdAt: new Date().toISOString(),
-        order: maxOrder + 1
+        order: maxOrder + 1,
+        workspaceId: assignedWorkspaceId
       })
       this.realignIdentifiers()
     },

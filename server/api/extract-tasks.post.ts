@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { prompt, ollamaApiKey, aiModel, previousDraft, revisionPrompt, categoryContext, existingTasks, propertiesSchema, currentDateTime } = body
+  const { prompt, ollamaApiKey, aiModel, previousDraft, revisionPrompt, categoryContext, existingTasks, propertiesSchema, currentDateTime, workspaces } = body
 
   if (!prompt && !revisionPrompt) {
     throw createError({
@@ -49,11 +49,15 @@ export default defineEventHandler(async (event) => {
     aiPrompt += `\n\nExisting Custom Properties on the Board:\n"""\n${JSON.stringify(propertiesSchema, null, 2)}\n"""\n\nYou can populate these custom properties for the tasks. If the user asks for a property that doesn't exist yet (e.g. "Add a Reviewer property set to John"), you can propose it in the "newProperties" array.`
   }
 
+  if (workspaces && workspaces.length > 0) {
+    aiPrompt += `\n\nExisting Workspaces:\n"""\n${JSON.stringify(workspaces, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: You must assign each task to an appropriate workspace by specifying "workspaceId". If the task is related to personal life, assign it to the 'personal' workspace. If it is related to work/career, assign it to the 'professional' workspace. You can also use other custom workspaces if they match the context better.`
+  }
+
   if (existingTasks && existingTasks.length > 0) {
     aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: If the user's prompt is asking to update, modify, or change an existing task (or if the input perfectly matches an existing task), you MUST set "action" to "update" and provide the correct "taskId" of the existing task. DO NOT create duplicate tasks. If it is a completely new request, set "action" to "create".`
   }
 
-  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [\n    { "name": "Reviewer", "type": "text" }\n  ],\n  "tasks": [\n    {\n      "action": "create" | "update",\n      "taskId": "task-123",\n      "title": "Task title",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" },\n        { "name": "Reviewer", "value": "John" }\n      ]\n    }\n  ]\n}`
+  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [\n    { "name": "Reviewer", "type": "text" }\n  ],\n  "tasks": [\n    {\n      "action": "create" | "update",\n      "taskId": "task-123",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" },\n        { "name": "Reviewer", "value": "John" }\n      ]\n    }\n  ]\n}`
 
   try {
     const result = await generateObject({
@@ -67,6 +71,7 @@ export default defineEventHandler(async (event) => {
           action: z.enum(['create', 'update']).describe('Whether to create a new task or update an existing one. Default to create.'),
           taskId: z.string().optional().describe('The ID of the existing task to update. Required ONLY if action is update.'),
           title: z.string().describe('A concise, actionable title for the task.'),
+          workspaceId: z.string().describe('The ID of the workspace this task belongs to (e.g. personal, professional, or a custom id).'),
           categoryName: z.string().optional().describe('The name of the category this task belongs to. Use existing if appropriate, or propose a new one.'),
           topicName: z.string().optional().describe('The name of the topic/column within the category. Use existing if appropriate, or propose a new one.'),
           priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h for High, opt-m for Medium, opt-l for Low.'),
@@ -81,7 +86,7 @@ export default defineEventHandler(async (event) => {
       prompt: aiPrompt
     })
 
-    return { tasks: result.object.tasks }
+    return { tasks: result.object.tasks, newProperties: result.object.newProperties }
   } catch (error: any) {
     console.error('[AI Task Extraction Error]:', error)
     throw createError({

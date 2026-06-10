@@ -76,6 +76,7 @@
                       <span class="draft-priority" :class="'prio-' + task.priority">{{ formatPriority(task.priority) }}</span>
                     </div>
                     <div class="draft-meta">
+                      <div class="meta-pill"><Briefcase v-if="task.workspaceId === 'professional'" :size="12" /><User v-else-if="task.workspaceId === 'personal'" :size="12" /><Folder v-else :size="12" /><span>{{ getWorkspaceName(task.workspaceId) }}</span></div>
                       <div class="meta-pill"><FolderTree :size="12" /><span>{{ task.categoryName || 'Inbox' }}</span></div>
                       <div class="meta-pill"><Columns :size="12" /><span>{{ task.topicName || 'To Do' }}</span></div>
                     </div>
@@ -131,11 +132,12 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
-import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check, FolderTree, Columns, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon, Paperclip, Cpu, CornerDownLeft } from '@lucide/vue'
+import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check, FolderTree, Columns, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon, Paperclip, Cpu, CornerDownLeft, Briefcase, User, Folder } from '@lucide/vue'
 import { useUIStore } from '~/stores/ui.store'
 import { useSettingsStore } from '~/stores/settings.store'
 import { useTaskStore } from '~/stores/task.store'
 import { useCategoryStore } from '~/stores/category.store'
+import { useWorkspaceStore } from '~/stores/workspace.store'
 import UiMicButton from '~/components/ui/MicButton.vue'
 import { Editor, EditorContent, VueRenderer } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
@@ -150,6 +152,7 @@ const uiStore = useUIStore()
 const settingsStore = useSettingsStore()
 const taskStore = useTaskStore()
 const categoryStore = useCategoryStore()
+const workspaceStore = useWorkspaceStore()
 
 type ViewState = 'input' | 'drafting' | 'review'
 const viewState = ref<ViewState>('input')
@@ -360,6 +363,12 @@ function getCategoryContext() {
   }))
 }
 
+function getWorkspaceName(id: string) {
+  if (!id) return 'Personal'
+  const ws = workspaceStore.workspaces.find(w => w.id === id)
+  return ws ? ws.name : 'Personal'
+}
+
 function getExistingTasks() {
   return taskStore.tasks.map(t => ({
     id: t.id,
@@ -387,6 +396,7 @@ async function runExtraction(payload: any) {
         existingTasks: getExistingTasks(),
         propertiesSchema: taskStore.propertiesSchema,
         currentDateTime: new Date().toISOString(),
+        workspaces: workspaceStore.workspaces,
         ollamaApiKey: settingsStore.ollamaApiKey,
         aiModel: settingsStore.aiModel
       })
@@ -533,7 +543,7 @@ function confirmAndAdd() {
       taskContext = topicId
     }
 
-    taskStore.addTask(t.title, taskContext)
+    taskStore.addTask(t.title, taskContext, 'open', t.workspaceId)
     const lastTask = taskStore.tasks[taskStore.tasks.length - 1]
     if (t.priority) taskStore.updateCustomProperty(lastTask.id, 'prop-priority', t.priority)
     if (t.description) taskStore.updateTaskField(lastTask.id, 'description', `<p>${t.description}</p>`)
