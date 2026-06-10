@@ -8,11 +8,11 @@
       <div class="header-actions">
         <button class="btn btn-secondary" @click="handleAddSubCategory">
           <Plus :size="16" />
-          <span>Add Sub-category</span>
+          <span>Category</span>
         </button>
         <button class="btn btn-primary" @click="handleAddTopic">
           <Plus :size="16" />
-          <span>Add Topic</span>
+          <span>Topic</span>
         </button>
       </div>
     </header>
@@ -47,6 +47,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Plus, FolderTree } from '@lucide/vue'
 import { useCategoryStore } from '~/stores/category.store'
+import { useUIStore } from '~/stores/ui.store'
 import { useNavigation } from '~/composables/useNavigation'
 import { useTopicSwitcher } from '~/composables/useTopicSwitcher'
 
@@ -58,6 +59,7 @@ const route = useRoute()
 const categoryId = computed(() => route.params.id as string)
 
 const categoryStore = useCategoryStore()
+const uiStore = useUIStore()
 const navigation = useNavigation()
 const topicSwitcher = useTopicSwitcher()
 
@@ -97,15 +99,15 @@ function handleRenameTopic(topicId: string, newName: string) {
   categoryStore.renameTask(categoryId.value, topicId, newName)
 }
 
-function handleAddTopic() {
-  const name = window.prompt('Enter new topic name:')
+async function handleAddTopic() {
+  const name = await uiStore.promptUser('New topic', 'e.g. Design System')
   if (name && name.trim()) {
     categoryStore.addTask(categoryId.value, name.trim())
   }
 }
 
-function handleAddSubCategory() {
-  const name = window.prompt('Enter sub-category name:')
+async function handleAddSubCategory() {
+  const name = await uiStore.promptUser('New category', 'e.g. Brand Assets')
   if (name && name.trim()) {
     categoryStore.addCategory(categoryId.value, name.trim())
   }
