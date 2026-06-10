@@ -131,20 +131,20 @@ function handleAddSubCategory() {
 .header-left {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .header-actions {
   display: flex;
   gap: var(--space-3);
-  margin-bottom: var(--space-1);
 }
 
 .page-title {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-top: var(--space-2);
-  letter-spacing: -0.02em;
+  margin: 0;
+  letter-spacing: -0.01em;
 }
 
 /* Button Styles */
@@ -152,7 +152,7 @@ function handleAddSubCategory() {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: var(--radius-medium);
   font-size: 13px;
   font-weight: 500;
@@ -186,26 +186,25 @@ function handleAddSubCategory() {
 .sub-categories-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-  padding-bottom: var(--space-6);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border-default);
 }
 
 .sub-category-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 6px;
+  padding: 4px 12px;
   background-color: var(--bg-surface-2);
   border: 1px solid rgba(0,0,0,0.03);
-  border-radius: 9999px; /* Pill shape */
+  border-radius: 9999px;
   text-decoration: none;
-  color: var(--text-primary);
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
   font-weight: 500;
   transition: all 200ms cubic-bezier(0.25, 1, 0.5, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 html.dark .sub-category-pill {
