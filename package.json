@@ -25,7 +25,8 @@
     "tippy.js": "^6.3.7",
     "vue": "^3.5.35",
     "vue-router": "^5.1.0",
-    "vuedraggable": "^4.1.0"
+    "vuedraggable": "^4.1.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0"

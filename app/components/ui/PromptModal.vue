@@ -11,15 +11,20 @@
           </div>
           
           <div class="modal-body">
-            <input 
-              ref="inputRef"
-              v-model="inputValue"
-              type="text"
-              :placeholder="uiStore.promptConfig.placeholder || 'Type here...'"
-              class="prompt-input"
-              @keyup.enter="submit"
-              @keyup.esc="cancel"
-            />
+            <div class="input-wrapper">
+              <input 
+                ref="inputRef"
+                v-model="inputValue"
+                type="text"
+                :placeholder="uiStore.promptConfig.placeholder || 'Type here...'"
+                class="prompt-input"
+                @keyup.enter="submit"
+                @keyup.esc="cancel"
+              />
+              <div class="mic-container">
+                <UiMicButton @update:text="handleDictation" @stop="preDictationValue = ''" />
+              </div>
+            </div>
           </div>
           
           <div class="modal-footer">
@@ -40,6 +45,7 @@ import { useUIStore } from '~/stores/ui.store'
 const uiStore = useUIStore()
 
 const inputValue = ref('')
+const preDictationValue = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 
 watch(() => uiStore.promptConfig, (newConfig) => {
@@ -62,6 +68,18 @@ function submit() {
 
 function cancel() {
   uiStore.resolvePrompt(null)
+}
+
+function handleDictation(text: string) {
+  if (!preDictationValue.value && !text) {
+    preDictationValue.value = inputValue.value
+  }
+  
+  if (preDictationValue.value) {
+    inputValue.value = preDictationValue.value + (preDictationValue.value.endsWith(' ') ? '' : ' ') + text
+  } else {
+    inputValue.value = text
+  }
 }
 </script>
 
@@ -137,9 +155,15 @@ html.dark .modal-content {
   padding: 0 var(--space-6) var(--space-2) var(--space-6);
 }
 
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .prompt-input {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px 48px 12px 16px; /* extra padding for mic button */
   border: 1px solid var(--border-default);
   border-radius: var(--radius-large);
   background-color: var(--bg-surface-2);
@@ -148,6 +172,14 @@ html.dark .modal-content {
   outline: none;
   transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.mic-container {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .prompt-input:focus {

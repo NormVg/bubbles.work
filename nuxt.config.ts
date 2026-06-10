@@ -6,5 +6,10 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   colorMode: {
     classSuffix: ''
+  },
+  nitro: {
+    experimental: {
+      websocket: true
+    }
   }
 })

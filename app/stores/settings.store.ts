@@ -4,13 +4,17 @@ export interface SettingsState {
   compactMode: boolean
   notificationsEnabled: boolean
   defaultWorkspaceId: string | null
+  sarvamApiKey: string | null
+  sttEngine: 'sarvam' | 'native'
 }
 
 export const useSettingsStore = defineStore('settings', {
   state: (): SettingsState => ({
     compactMode: false,
     notificationsEnabled: true,
-    defaultWorkspaceId: null
+    defaultWorkspaceId: null,
+    sarvamApiKey: null,
+    sttEngine: 'native'
   }),
   actions: {
     toggleCompactMode() {
@@ -21,6 +25,12 @@ export const useSettingsStore = defineStore('settings', {
     },
     setDefaultWorkspace(id: string) {
       this.defaultWorkspaceId = id
+    },
+    setSarvamApiKey(key: string | null) {
+      this.sarvamApiKey = key
+    },
+    setSttEngine(engine: 'sarvam' | 'native') {
+      this.sttEngine = engine
     }
   },
   persist: true
