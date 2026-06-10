@@ -17,19 +17,13 @@
           
           <div class="drawer-body">
             <!-- INPUT STAGE -->
-            <template v-if="viewState === 'input' || viewState === 'drafting'">
+            <div v-show="viewState === 'input' || viewState === 'drafting'" class="input-stage">
               <p class="description">
-                Jot down your thoughts, paste a conversation, or dictate via mic. AI will draft structured tasks for you to review.
+                Jot down your thoughts, paste a conversation, or dictate via mic. AI will structure and categorize tasks for you.
               </p>
 
               <div class="editor-container" :class="{ 'is-drafting': viewState === 'drafting' }">
-                <textarea 
-                  v-model="dumpText"
-                  class="editor-textarea"
-                  placeholder="Type or click the mic to speak..."
-                  ref="textareaRef"
-                  :disabled="viewState === 'drafting'"
-                ></textarea>
+                <editor-content :editor="editor" class="tiptap-editor" />
                 
                 <div class="editor-toolbar">
                   <div class="toolbar-left">
@@ -42,7 +36,7 @@
                     <button 
                       class="btn-generate" 
                       @click="extractTasks" 
-                      :disabled="viewState === 'drafting' || !dumpText.trim()"
+                      :disabled="viewState === 'drafting' || isEditorEmpty"
                     >
                       <Loader2 v-if="viewState === 'drafting'" class="spinner" :size="16" />
                       <Sparkles v-else :size="16" />
@@ -51,10 +45,10 @@
                   </div>
                 </div>
               </div>
-            </template>
+            </div>
 
             <!-- REVIEW STAGE -->
-            <template v-else-if="viewState === 'review'">
+            <div v-if="viewState === 'review'" class="review-stage">
               <div class="review-header">
                 <h3>Drafted Tasks</h3>
                 <p>Review the tasks below. You can ask the AI to revise them or confirm to add them to your board.</p>
@@ -65,6 +59,10 @@
                   <div class="draft-card-header">
                     <span class="draft-title">{{ task.title }}</span>
                     <span class="draft-priority" :class="'prio-' + task.priority">{{ formatPriority(task.priority) }}</span>
+                  </div>
+                  <div class="draft-meta">
+                    <div class="meta-pill"><FolderTree :size="12" /><span>{{ task.categoryName || 'Inbox' }}</span></div>
+                    <div class="meta-pill"><Columns :size="12" /><span>{{ task.topicName || 'To Do' }}</span></div>
                   </div>
                   <p v-if="task.description" class="draft-desc">{{ task.description }}</p>
                   <div class="draft-footer">
@@ -95,7 +93,7 @@
                   <span>Confirm & Add to Board</span>
                 </button>
               </div>
-            </template>
+            </div>
 
             <!-- Error State -->
             <div v-if="error" class="error-banner">
@@ -110,16 +108,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check } from '@lucide/vue'
+import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
+import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check, FolderTree, Columns, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon } from '@lucide/vue'
 import { useUIStore } from '~/stores/ui.store'
 import { useSettingsStore } from '~/stores/settings.store'
 import { useTaskStore } from '~/stores/task.store'
+import { useCategoryStore } from '~/stores/category.store'
 import UiMicButton from '~/components/ui/MicButton.vue'
+import { Editor, EditorContent, VueRenderer } from '@tiptap/vue-3'
+import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
+import tippy from 'tippy.js'
+import SlashMenuList from './SlashMenuList.vue'
+import { SlashCommandsExtension } from '~/utils/SlashCommands'
 
 const uiStore = useUIStore()
 const settingsStore = useSettingsStore()
 const taskStore = useTaskStore()
+const categoryStore = useCategoryStore()
 
 type ViewState = 'input' | 'drafting' | 'review'
 const viewState = ref<ViewState>('input')
@@ -130,26 +138,125 @@ const revisionText = ref('')
 const isRevising = ref(false)
 const error = ref('')
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
 let lastTranscript = ''
+let editor: Editor | null = null
+
+const isEditorEmpty = computed(() => {
+  if (!editor) return true
+  // Check if editor only contains an empty paragraph or nothing
+  return editor.isEmpty
+})
+
+watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
+  if (isOpen) {
+    if (!editor) {
+      editor = new Editor({
+        extensions: [
+          StarterKit,
+          Image.configure({ inline: true }),
+          Link.configure({ openOnClick: false }),
+          Placeholder.configure({
+            placeholder: 'Type or click the mic to speak...',
+          }),
+          SlashCommandsExtension.configure({
+            suggestion: {
+              items: ({ query }: { query: string }) => {
+                return [
+                  { title: 'Heading 1', icon: Heading1, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run() },
+                  { title: 'Heading 2', icon: Heading2, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run() },
+                  { title: 'Heading 3', icon: Heading3, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run() },
+                  { title: 'Bullet List', icon: ListIcon, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleBulletList().run() },
+                  { title: 'Code Block', icon: Code, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
+                  { title: 'Blockquote', icon: Quote, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
+                  { title: 'Divider', icon: Minus, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() },
+                  { title: 'Image', icon: ImageIcon, command: async ({ editor, range }: any) => {
+                    const url = await uiStore.promptUser('Image URL', 'https://...')
+                    if (url) editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
+                  } },
+                  { title: 'Link', icon: LinkIcon, command: async ({ editor, range }: any) => {
+                    const url = await uiStore.promptUser('Link URL', 'https://...')
+                    if (url) editor.chain().focus().deleteRange(range).setLink({ href: url }).run()
+                  } }
+                ].filter(item => item.title.toLowerCase().includes(query.toLowerCase()))
+              },
+              render: () => {
+                let component: any
+                let popup: any
+                return {
+                  onStart: (props: any) => {
+                    component = new VueRenderer(SlashMenuList, { props, editor: props.editor })
+                    if (!props.clientRect) return
+                    popup = tippy('body', {
+                      getReferenceClientRect: props.clientRect,
+                      appendTo: () => document.body,
+                      content: component.element,
+                      showOnCreate: true,
+                      interactive: true,
+                      trigger: 'manual',
+                      placement: 'bottom-start',
+                    })
+                  },
+                  onUpdate(props: any) {
+                    component.updateProps(props)
+                    if (!props.clientRect) return
+                    popup[0].setProps({ getReferenceClientRect: props.clientRect })
+                  },
+                  onKeyDown(props: any) {
+                    if (props.event.key === 'Escape') {
+                      popup[0].hide()
+                      return true
+                    }
+                    return component.ref?.onKeyDown(props)
+                  },
+                  onExit() {
+                    popup?.[0]?.destroy()
+                    component?.destroy()
+                  },
+                }
+              }
+            }
+          })
+        ],
+        content: dumpText.value,
+        onUpdate: () => {
+          if (editor) {
+            dumpText.value = editor.getText()
+          }
+        },
+        editorProps: {
+          attributes: {
+            class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none max-w-none tiptap-inner',
+          }
+        }
+      })
+    }
+  } else {
+    if (editor) {
+      editor.destroy()
+      editor = null
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  if (editor) {
+    editor.destroy()
+  }
+})
 
 function handleDictation(text: string) {
+  if (!editor) return
+  
   if (!lastTranscript) {
-    if (dumpText.value && !dumpText.value.endsWith(' ') && !dumpText.value.endsWith('\n')) {
-      dumpText.value += ' '
+    const currentText = editor.getText()
+    if (currentText && !currentText.endsWith(' ') && !currentText.endsWith('\n')) {
+      editor.commands.insertContent(' ')
     }
-    dumpText.value += text
+    editor.commands.insertContent(text)
   } else {
-    const prefix = dumpText.value.slice(0, dumpText.value.length - lastTranscript.length)
-    dumpText.value = prefix + text
+    editor.commands.insertContent(' ' + text)
   }
   lastTranscript = text
-  
-  nextTick(() => {
-    if (textareaRef.value) {
-      textareaRef.value.scrollTop = textareaRef.value.scrollHeight
-    }
-  })
 }
 
 function handleMicStop() {
@@ -160,6 +267,7 @@ function close() {
   uiStore.closeCreateDrawer()
   viewState.value = 'input'
   dumpText.value = ''
+  if (editor) editor.commands.setContent('')
   draftTasks.value = []
   revisionText.value = ''
   error.value = ''
@@ -170,6 +278,13 @@ function formatPriority(p: string) {
   if (p === 'opt-m') return 'Medium'
   if (p === 'opt-l') return 'Low'
   return p
+}
+
+function getCategoryContext() {
+  return categoryStore.categories.map(c => ({
+    categoryName: c.name,
+    topics: c.tasks.map(t => t.name)
+  }))
 }
 
 async function runExtraction(payload: any) {
@@ -185,6 +300,7 @@ async function runExtraction(payload: any) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...payload,
+        categoryContext: getCategoryContext(),
         ollamaApiKey: settingsStore.ollamaApiKey,
         aiModel: settingsStore.aiModel
       })
@@ -209,10 +325,11 @@ async function runExtraction(payload: any) {
 }
 
 async function extractTasks() {
-  if (!dumpText.value.trim()) return
+  if (isEditorEmpty.value) return
   viewState.value = 'drafting'
   
-  const tasks = await runExtraction({ prompt: dumpText.value })
+  // Use text for extraction, not raw HTML
+  const tasks = await runExtraction({ prompt: editor?.getText() || dumpText.value })
   if (tasks) {
     draftTasks.value = tasks
     viewState.value = 'review'
@@ -241,7 +358,40 @@ function confirmAndAdd() {
   if (!draftTasks.value.length) return
   
   draftTasks.value.forEach(t => {
-    taskStore.addTask(t.title, t.context || 'today')
+    let catId = null
+    let topicId = null
+    
+    // 1. Find or create category
+    if (t.categoryName) {
+      const existingCat = categoryStore.categories.find(c => c.name.toLowerCase() === t.categoryName.toLowerCase())
+      if (existingCat) {
+        catId = existingCat.id
+      } else {
+        categoryStore.addCategory(null, t.categoryName)
+        catId = categoryStore.categories[categoryStore.categories.length - 1].id
+      }
+    }
+    
+    // 2. Find or create topic inside category
+    if (catId && t.topicName) {
+      const cat = categoryStore.categories.find(c => c.id === catId)
+      if (cat) {
+        const existingTopic = cat.tasks.find(tk => tk.name.toLowerCase() === t.topicName.toLowerCase())
+        if (existingTopic) {
+          topicId = existingTopic.id
+        } else {
+          categoryStore.addTask(cat.id, t.topicName)
+          topicId = cat.tasks[cat.tasks.length - 1].id
+        }
+      }
+    }
+    
+    let taskContext = 'today' // fallback
+    if (topicId) {
+      taskContext = topicId
+    }
+
+    taskStore.addTask(t.title, taskContext)
     const lastTask = taskStore.tasks[taskStore.tasks.length - 1]
     if (t.priority) taskStore.updateCustomProperty(lastTask.id, 'prop-priority', t.priority)
     if (t.description) taskStore.updateTaskField(lastTask.id, 'description', `<p>${t.description}</p>`)
@@ -327,6 +477,12 @@ html.dark .drawer-content {
 }
 
 /* ── Editor UI (Markdown Style) ── */
+.input-stage, .review-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 .description {
   color: var(--text-secondary);
   font-size: 14px;
@@ -341,26 +497,39 @@ html.dark .drawer-content {
   position: relative;
 }
 
-.editor-textarea {
+.tiptap-editor {
   flex: 1;
   width: 100%;
-  resize: none;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--text-primary);
-  outline: none;
-  min-height: 300px;
+  cursor: text;
 }
 
-.editor-textarea::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
-  font-weight: 400;
-  font-size: 18px;
+:deep(.tiptap-inner) {
+  min-height: 300px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  outline: none;
+  font-size: 16px;
 }
+
+:deep(.tiptap-inner p.is-editor-empty:first-child::before) {
+  color: var(--text-muted);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+:deep(.tiptap-inner p) { margin-bottom: 0.75em; }
+:deep(.tiptap-inner h1) { font-size: 2em; font-weight: 700; margin-top: 1.2em; margin-bottom: 0.5em; letter-spacing: -0.02em; }
+:deep(.tiptap-inner h2) { font-size: 1.5em; font-weight: 600; margin-top: 1.2em; margin-bottom: 0.5em; letter-spacing: -0.01em; }
+:deep(.tiptap-inner h3) { font-size: 1.17em; font-weight: 600; margin-top: 1.2em; margin-bottom: 0.5em; }
+:deep(.tiptap-inner ul) { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+:deep(.tiptap-inner ol) { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+:deep(.tiptap-inner blockquote) { border-left: 3px solid var(--border-strong); padding-left: 1em; margin-left: 0; color: var(--text-secondary); font-style: italic; }
+:deep(.tiptap-inner pre) { background: var(--bg-surface-2); padding: 1em; border-radius: var(--radius-medium); overflow-x: auto; font-family: monospace; font-size: 13px; }
+:deep(.tiptap-inner code) { background: var(--bg-surface-2); padding: 0.2em 0.4em; border-radius: var(--radius-micro); font-family: monospace; font-size: 0.9em; color: #E24B4A; }
+html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 
 .editor-toolbar {
   display: flex;
@@ -419,6 +588,7 @@ html.dark .drawer-content {
   font-weight: 600;
   margin: 0 0 var(--space-1) 0;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .review-header p {
@@ -442,7 +612,13 @@ html.dark .drawer-content {
   padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  transition: all 200ms ease;
+}
+
+.draft-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .draft-card-header {
@@ -454,24 +630,44 @@ html.dark .drawer-content {
 
 .draft-title {
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   line-height: 1.4;
+  letter-spacing: -0.01em;
 }
 
 .draft-priority {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
   border-radius: var(--radius-small);
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 .prio-opt-h { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
 .prio-opt-m { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
 .prio-opt-l { background-color: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 
+.draft-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface-2);
+  padding: 4px 8px;
+  border-radius: var(--radius-medium);
+}
+
 .draft-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
@@ -480,7 +676,7 @@ html.dark .drawer-content {
 .draft-footer {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: var(--space-2);
+  margin-top: auto;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -495,7 +691,7 @@ html.dark .drawer-content {
   border-radius: var(--radius-large);
   padding: 8px 12px;
   margin-bottom: var(--space-8);
-  transition: border-color 200ms ease;
+  transition: all 200ms ease;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
 }
 
@@ -511,10 +707,12 @@ html.dark .drawer-content {
   outline: none;
   font-size: 14px;
   color: var(--text-primary);
+  padding: 4px 0;
 }
 
 .revision-input::placeholder {
   color: var(--text-muted);
+  font-weight: 400;
 }
 
 .btn-revise {
