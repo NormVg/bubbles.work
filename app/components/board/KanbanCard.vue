@@ -10,6 +10,9 @@
             {{ tag.label }}
           </span>
         </div>
+        <button class="delete-btn" @click.stop="taskStore.removeTask(task.id)" title="Delete Task">
+          <Trash2 :size="14" :stroke-width="1.5" />
+        </button>
         <div class="drag-handle">
           <GripVertical :size="14" :stroke-width="1.5" />
         </div>
@@ -51,7 +54,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GripVertical, User, Database, Signal } from '@lucide/vue'
+import { GripVertical, User, Database, Signal, Trash2 } from '@lucide/vue'
 import type { BoardTask } from '~/stores/task.store'
 import { useTaskStore } from '~/stores/task.store'
 import { useUIStore } from '~/stores/ui.store'
@@ -74,6 +77,14 @@ const activeProps = computed(() => {
       const option = schemaProp.options?.find(o => o.id === rawVal)
       if (option) return { ...schemaProp, displayValue: option.label, color: option.color || schemaProp.color }
       return null
+    }
+
+    if (schemaProp.type === 'date') {
+      const date = new Date(rawVal)
+      const displayValue = isNaN(date.getTime()) 
+        ? String(rawVal) 
+        : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      return { ...schemaProp, displayValue, color: schemaProp.color }
     }
     
     return { ...schemaProp, displayValue: String(rawVal), color: schemaProp.color }
@@ -162,25 +173,37 @@ html.dark .tag-info { background-color: rgba(45, 128, 217, 0.14); color: #93c5fd
 html.dark .tag-primary { background-color: rgba(139, 92, 246, 0.14); color: #c4b5fd; }
 html.dark .tag-warning { background-color: rgba(239, 159, 39, 0.14); color: #fcd34d; }
 
-.drag-handle {
+.drag-handle, .delete-btn {
   color: var(--text-muted);
   cursor: grab;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 150ms ease, color 150ms ease;
-  padding: 2px;
+  transition: opacity 150ms ease, color 150ms ease, background-color 150ms ease;
+  padding: 4px;
   border-radius: var(--radius-micro);
+  background: transparent;
+  border: none;
 }
 
-.kanban-card:hover .drag-handle {
+.delete-btn {
+  cursor: pointer;
+}
+
+.kanban-card:hover .drag-handle,
+.kanban-card:hover .delete-btn {
   opacity: 1;
 }
 
 .drag-handle:hover {
   background-color: var(--bg-surface-2);
   color: var(--text-primary);
+}
+
+.delete-btn:hover {
+  background-color: rgba(226, 75, 74, 0.1);
+  color: #E24B4A;
 }
 
 .drag-handle:active {

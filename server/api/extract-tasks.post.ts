@@ -44,10 +44,11 @@ Follow these rules strictly:
 
 1. ACTION: Always set action to "create". Only use "update" if the user literally says "update task X" or "change task X" and provides an existing task ID.
 2. CONTEXT: Default is "someday". Only use "today" if the user says "today", "now", "urgent", or "ASAP". Only use "tomorrow" if the user says "tomorrow". Everything else is "someday".
-3. CATEGORY: Every task MUST have a categoryName. This is a project area like "Health", "Work", "Side Projects", "Engineering", "Design". Never leave it empty.
-4. TOPIC: Every task MUST have a topicName. This is a sub-area like "Fitness", "Frontend", "Backend", "Branding". Never leave it empty.
+3. CATEGORY: If a specific project, product, or app name is mentioned (e.g. "bubbles.work", "bubbles.mail"), use that EXACT name as the CategoryName. If no project is mentioned, use a broad area like "Health", "Work", "Side Projects". Never leave it empty.
+4. TOPIC: If the category is a project, use the functional area as the Topic (e.g. "Backend", "Frontend", "Infrastructure", "AI"). Otherwise, use a sub-area like "Fitness" or "Reading". Never leave it empty.
 5. WORKSPACE: Use "personal" for personal life tasks (health, hobbies, errands). Use "professional" for work tasks (engineering, design, meetings).
 6. PRIORITY: Use "opt-h" for high, "opt-m" for medium, "opt-l" for low. Default to "opt-m" if unclear.
+7. DATE/TIME: If the user mentions a specific date, time, or deadline (e.g., "at 7:30 AM", "on Friday"), you MUST include a custom property with the name "prop-date" and the value formatted as an ISO 8601 string representing that date/time based on the CURRENT DATE/TIME.
 
 # OUTPUT FORMAT
 Return ONLY valid JSON. No markdown, no explanation, no code fences. Just the raw JSON object.`
@@ -119,13 +120,19 @@ Populate these if relevant. Propose new ones in "newProperties" if the user asks
       "topicName": "Fitness",
       "priority": "opt-m",
       "context": "someday",
-      "description": "30 minute jog in the park"
+      "description": "30 minute jog in the park",
+      "customProperties": [
+        {
+          "name": "prop-date",
+          "value": "2026-06-12T07:30:00.000Z"
+        }
+      ]
     },
     {
       "action": "create",
       "title": "Review pull request #42",
       "workspaceId": "professional",
-      "categoryName": "Engineering",
+      "categoryName": "bubbles.work",
       "topicName": "Code Review",
       "priority": "opt-h",
       "context": "someday",
