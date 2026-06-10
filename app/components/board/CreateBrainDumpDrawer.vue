@@ -226,6 +226,29 @@ watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
         editorProps: {
           attributes: {
             class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none max-w-none tiptap-inner',
+          },
+          handlePaste: (view, event, slice) => {
+            const items = event.clipboardData?.items
+            if (!items) return false
+            let handled = false
+            for (const item of items) {
+              if (item.type.indexOf('image') === 0) {
+                event.preventDefault()
+                const file = item.getAsFile()
+                if (file) {
+                  const reader = new FileReader()
+                  reader.onload = (e) => {
+                    const result = e.target?.result
+                    if (typeof result === 'string') {
+                      editor?.commands.setImage({ src: result })
+                    }
+                  }
+                  reader.readAsDataURL(file)
+                  handled = true
+                }
+              }
+            }
+            return handled
           }
         }
       })
@@ -495,16 +518,29 @@ html.dark .drawer-content {
   display: flex;
   flex-direction: column;
   position: relative;
+  background-color: var(--bg-surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-large);
+  padding: var(--space-4) var(--space-4) 0 var(--space-4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.editor-container:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 2px var(--bg-surface-2);
 }
 
 .tiptap-editor {
   flex: 1;
   width: 100%;
   cursor: text;
+  overflow-y: auto;
+  padding-bottom: var(--space-4);
 }
 
 :deep(.tiptap-inner) {
-  min-height: 300px;
+  min-height: 100%;
   color: var(--text-primary);
   line-height: 1.6;
   outline: none;
@@ -537,6 +573,7 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   align-items: center;
   padding: var(--space-4) 0;
   margin-top: auto;
+  border-top: 1px solid var(--border-default);
 }
 
 .toolbar-left, .toolbar-right {
