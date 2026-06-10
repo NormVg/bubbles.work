@@ -58,7 +58,10 @@
               <div class="draft-list">
                 <div v-for="(task, index) in draftTasks" :key="index" class="draft-card">
                   <div class="draft-card-header">
-                    <span class="draft-title">{{ task.title }}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span v-if="task.action === 'update'" class="update-badge">UPDATE</span>
+                      <span class="draft-title">{{ task.title }}</span>
+                    </div>
                     <span class="draft-priority" :class="'prio-' + task.priority">{{ formatPriority(task.priority) }}</span>
                   </div>
                   <div class="draft-meta">
@@ -337,6 +340,16 @@ function getCategoryContext() {
   }))
 }
 
+function getExistingTasks() {
+  return taskStore.tasks.map(t => ({
+    id: t.id,
+    title: t.title,
+    priority: t.customProperties['prop-priority'],
+    context: t.context,
+    description: t.description || ''
+  }))
+}
+
 async function runExtraction(payload: any) {
   if (!settingsStore.ollamaApiKey) {
     error.value = 'Please configure your Ollama API Key in Settings.'
@@ -351,6 +364,7 @@ async function runExtraction(payload: any) {
       body: JSON.stringify({
         ...payload,
         categoryContext: getCategoryContext(),
+        existingTasks: getExistingTasks(),
         ollamaApiKey: settingsStore.ollamaApiKey,
         aiModel: settingsStore.aiModel
       })
@@ -407,6 +421,20 @@ function confirmAndAdd() {
   if (!draftTasks.value.length) return
   
   draftTasks.value.forEach(t => {
+    if (t.action === 'update' && t.taskId) {
+      // Find existing task
+      const existing = taskStore.tasks.find(x => x.id === t.taskId)
+      if (existing) {
+        if (t.title) taskStore.updateTaskTitle(t.taskId, t.title)
+        if (t.priority) taskStore.updateCustomProperty(t.taskId, 'prop-priority', t.priority)
+        if (t.description) taskStore.updateTaskField(t.taskId, 'description', `<p>${t.description}</p>`)
+        if (t.context) {
+           taskStore.updateTaskField(t.taskId, 'context', t.context)
+        }
+      }
+      return
+    }
+
     let catId = null
     let topicId = null
     
@@ -435,7 +463,7 @@ function confirmAndAdd() {
       }
     }
     
-    let taskContext = 'today' // fallback
+    let taskContext = t.context || 'today'
     if (topicId) {
       taskContext = topicId
     }
@@ -698,6 +726,16 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
+}
+
+.update-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-on-primary, #ffffff);
+  background-color: var(--text-primary);
+  padding: 3px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
 }
 
 .draft-title {

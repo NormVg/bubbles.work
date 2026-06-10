@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { prompt, ollamaApiKey, aiModel, previousDraft, revisionPrompt, categoryContext } = body
+  const { prompt, ollamaApiKey, aiModel, previousDraft, revisionPrompt, categoryContext, existingTasks } = body
 
   if (!prompt && !revisionPrompt) {
     throw createError({
@@ -38,19 +38,25 @@ export default defineEventHandler(async (event) => {
   }
   
   if (categoryContext) {
-    aiPrompt += `\n\nExisting Workspace Structure:\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nPlease organize the tasks into appropriate categories and topics (columns). Use existing ones if they match, otherwise propose new ones.`
+    aiPrompt += `\n\nExisting Workspace Structure (Categories and Topics):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nPlease organize the tasks into appropriate categories and topics (columns). Use existing ones if they match, otherwise propose new ones.`
   }
 
-  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "tasks": [\n    {\n      "title": "Task title",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description"\n    }\n  ]\n}`
+  if (existingTasks && existingTasks.length > 0) {
+    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: If the user's prompt is asking to update, modify, or change an existing task (or if the input perfectly matches an existing task), you MUST set "action" to "update" and provide the correct "taskId" of the existing task. DO NOT create duplicate tasks. If it is a completely new request, set "action" to "create".`
+  }
+
+  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "tasks": [\n    {\n      "action": "create" | "update",\n      "taskId": "task-123",\n      "title": "Task title",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description"\n    }\n  ]\n}`
 
   try {
     const result = await generateObject({
       model,
       schema: z.object({
         tasks: z.array(z.object({
+          action: z.enum(['create', 'update']).describe('Whether to create a new task or update an existing one. Default to create.'),
+          taskId: z.string().optional().describe('The ID of the existing task to update. Required ONLY if action is update.'),
           title: z.string().describe('A concise, actionable title for the task.'),
-          categoryName: z.string().describe('The name of the category this task belongs to. Use existing if appropriate, or propose a new one.'),
-          topicName: z.string().describe('The name of the topic/column within the category. Use existing if appropriate, or propose a new one.'),
+          categoryName: z.string().optional().describe('The name of the category this task belongs to. Use existing if appropriate, or propose a new one.'),
+          topicName: z.string().optional().describe('The name of the topic/column within the category. Use existing if appropriate, or propose a new one.'),
           priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h for High, opt-m for Medium, opt-l for Low.'),
           context: z.enum(['today', 'tomorrow', 'someday']).describe('today, tomorrow, or someday based on the urgency mentioned in the prompt. default to today if unspecified.'),
           description: z.string().optional().describe('Additional context or details about the task.')
