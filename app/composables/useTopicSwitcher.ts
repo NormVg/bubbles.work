@@ -7,6 +7,15 @@ export interface SiblingTopic {
   color?: string
 }
 
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316']
+
+function getTopicColor(id: string, color?: string) {
+  if (color) return color
+  // Generate a deterministic color based on the ID string
+  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return COLORS[hash % COLORS.length]
+}
+
 export const useTopicSwitcher = () => {
   const categoryStore = useCategoryStore()
 
@@ -25,7 +34,7 @@ export const useTopicSwitcher = () => {
               id: t.id,
               name: t.name,
               isActive: t.id === topicId,
-              color: t.color
+              color: getTopicColor(t.id, t.color)
             }))
           }
           return true
@@ -54,7 +63,7 @@ export const useTopicSwitcher = () => {
             id: t.id,
             name: t.name,
             isActive: false,
-            color: t.color
+            color: getTopicColor(t.id, t.color)
           }))
           return true
         }

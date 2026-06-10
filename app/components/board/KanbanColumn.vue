@@ -5,7 +5,15 @@
       <div class="header-left">
         <div class="status-badge" :class="isStandardStatus ? `badge-${status}` : 'badge-dynamic'" :style="dynamicBadgeStyle">
           <span class="status-dot" :class="isStandardStatus ? `dot-${status}` : 'dot-dynamic'" :style="dynamicDotStyle" />
-          <h3 class="column-title">{{ title }}</h3>
+          <h3 v-if="!isEditing" class="column-title" :class="{ 'is-editable': !isStandardStatus }" @click="startEditing">{{ title }}</h3>
+          <input 
+            v-else 
+            ref="titleInputRef" 
+            v-model="editTitle" 
+            class="column-title-input" 
+            @blur="saveTitle" 
+            @keyup.enter="saveTitle" 
+          />
           <span class="task-count">{{ tasks.length }}</span>
         </div>
       </div>
@@ -47,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { Plus } from '@lucide/vue'
 import VueDraggable from 'vuedraggable'
 import type { BoardTask, TaskStatus } from '~/stores/task.store'
@@ -62,8 +70,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   update: [orderedTasks: BoardTask[]]
-  add: [status: TaskStatus]
+  add: [status: TaskStatus | string]
   remove: [taskId: string]
+  rename: [newName: string]
 }>()
 
 const isStandardStatus = computed(() => ['open', 'live', 'done'].includes(props.status))
@@ -97,6 +106,29 @@ const localTasks = computed({
     emit('update', val)
   }
 })
+
+const isEditing = ref(false)
+const editTitle = ref(props.title)
+const titleInputRef = ref<HTMLInputElement | null>(null)
+
+async function startEditing() {
+  if (isStandardStatus.value) return
+  isEditing.value = true
+  editTitle.value = props.title
+  await nextTick()
+  if (titleInputRef.value) {
+    titleInputRef.value.focus()
+    titleInputRef.value.select()
+  }
+}
+
+function saveTitle() {
+  if (!isEditing.value) return
+  isEditing.value = false
+  if (editTitle.value.trim() && editTitle.value !== props.title) {
+    emit('rename', editTitle.value.trim())
+  }
+}
 </script>
 
 <style scoped>
@@ -220,6 +252,35 @@ html.dark .column-done {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  transition: color 150ms ease;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin-left: -4px;
+}
+
+.column-title.is-editable {
+  cursor: pointer;
+}
+
+.column-title.is-editable:hover {
+  background-color: var(--bg-hover);
+}
+
+.column-title-input {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background-color: var(--bg-surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 1px 3px;
+  margin-left: -4px;
+  outline: none;
+  width: 120px;
+}
+
+.column-title-input:focus {
+  border-color: var(--text-primary);
 }
 
 .task-count {

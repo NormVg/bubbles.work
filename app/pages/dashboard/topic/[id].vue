@@ -3,7 +3,6 @@
     <header class="page-header">
       <LayoutBreadcrumbs :items="breadcrumbs" />
       <h1 class="page-title">{{ topicName }}</h1>
-      <p class="page-description">Board for {{ topicName }}</p>
     </header>
     
     <BoardTopicSwitcher v-if="siblingTopics" :topics="siblingTopics" />

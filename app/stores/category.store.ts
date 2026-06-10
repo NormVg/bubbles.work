@@ -112,6 +112,13 @@ export const useCategoryStore = defineStore('category', {
       if (category) {
         category.tasks = category.tasks.filter(t => t.id !== taskId)
       }
+    },
+    renameTask(categoryId: string, taskId: string, newName: string) {
+      const category = findCategory(this.categories, categoryId)
+      if (category) {
+        const task = category.tasks.find(t => t.id === taskId)
+        if (task) task.name = newName
+      }
     }
   },
   persist: true
