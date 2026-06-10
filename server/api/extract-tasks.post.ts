@@ -4,12 +4,12 @@ import { z } from 'zod'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { prompt, ollamaApiKey, aiModel } = body
+  const { prompt, ollamaApiKey, aiModel, previousDraft, revisionPrompt } = body
 
-  if (!prompt || !prompt.trim()) {
+  if (!prompt && !revisionPrompt) {
     throw createError({
       statusCode: 400,
-      message: 'Prompt is required'
+      message: 'Input is required'
     })
   }
 
@@ -29,6 +29,15 @@ export default defineEventHandler(async (event) => {
   })
 
   const model = ollama(aiModel || 'llama3.1')
+  
+  let aiPrompt = ''
+  if (previousDraft && revisionPrompt) {
+    aiPrompt = `You previously drafted these tasks:\n"""\n${JSON.stringify(previousDraft, null, 2)}\n"""\n\nThe user wants you to revise this draft based on these instructions:\n"""\n${revisionPrompt}\n"""\n\nPlease output the complete, newly revised list of tasks. Apply the user's requested changes to the previous draft.`
+  } else {
+    aiPrompt = `Extract structured tasks from the following input.\n\nInput:\n"""\n${prompt}\n"""`
+  }
+  
+  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "tasks": [\n    {\n      "title": "Task title",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description"\n    }\n  ]\n}`
 
   try {
     const result = await generateObject({
@@ -41,7 +50,7 @@ export default defineEventHandler(async (event) => {
           description: z.string().optional().describe('Additional context or details about the task.')
         }))
       }),
-      prompt: `Extract structured tasks from the following brain dump.\n\nBrain Dump:\n"""\n${prompt}\n"""\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "tasks": [\n    {\n      "title": "Task title",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description"\n    }\n  ]\n}`
+      prompt: aiPrompt
     })
 
     return { tasks: result.object.tasks }
