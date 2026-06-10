@@ -262,7 +262,7 @@ watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
       editor = null
     }
   }
-})
+}, { immediate: true })
 
 onBeforeUnmount(() => {
   if (editor) {
