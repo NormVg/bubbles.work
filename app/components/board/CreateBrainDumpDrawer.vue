@@ -23,11 +23,18 @@
                 Jot down your thoughts, paste a conversation, or dictate via mic. AI will structure and categorize tasks for you.
               </p>
 
-              <div class="editor-container" :class="{ 'is-drafting': viewState === 'drafting' }">
-                <div class="editor-inner">
-                  <editor-content :editor="editor" class="tiptap-editor" />
-                  
-                  <div class="editor-toolbar">
+              <editor-content :editor="editor" class="tiptap-editor" />
+              
+              <div class="ai-prompt-box">
+                <div class="ai-prompt-inner">
+                  <input 
+                    v-model="promptInstruction" 
+                    type="text" 
+                    class="ai-prompt-input" 
+                    placeholder="Dump your mind, let me manage..." 
+                    @keyup.enter="extractTasks" 
+                  />
+                  <div class="ai-prompt-toolbar">
                     <div class="toolbar-left">
                       <UiMicButton 
                         @update:text="handleDictation" 
@@ -38,7 +45,7 @@
                       <button 
                         class="btn-submit" 
                         @click="extractTasks" 
-                        :disabled="viewState === 'drafting' || isEditorEmpty"
+                        :disabled="viewState === 'drafting' || (isEditorEmpty && !promptInstruction)"
                         title="Draft Tasks"
                       >
                         <Loader2 v-if="viewState === 'drafting'" class="spinner" :size="16" />
@@ -136,6 +143,7 @@ type ViewState = 'input' | 'drafting' | 'review'
 const viewState = ref<ViewState>('input')
 
 const dumpText = ref('')
+const promptInstruction = ref('')
 const draftTasks = ref<any[]>([])
 const revisionText = ref('')
 const isRevising = ref(false)
@@ -293,6 +301,7 @@ function close() {
   uiStore.closeCreateDrawer()
   viewState.value = 'input'
   dumpText.value = ''
+  promptInstruction.value = ''
   if (editor) editor.commands.setContent('')
   draftTasks.value = []
   revisionText.value = ''
@@ -351,11 +360,15 @@ async function runExtraction(payload: any) {
 }
 
 async function extractTasks() {
-  if (isEditorEmpty.value) return
+  if (isEditorEmpty.value && !promptInstruction.value.trim()) return
   viewState.value = 'drafting'
   
-  // Use text for extraction, not raw HTML
-  const tasks = await runExtraction({ prompt: editor?.getText() || dumpText.value })
+  let finalPrompt = editor?.getText() || dumpText.value
+  if (promptInstruction.value.trim()) {
+    finalPrompt = `Instruction: ${promptInstruction.value.trim()}\n\nContext:\n${finalPrompt}`
+  }
+  
+  const tasks = await runExtraction({ prompt: finalPrompt })
   if (tasks) {
     draftTasks.value = tasks
     viewState.value = 'review'
@@ -528,43 +541,22 @@ html.dark .drawer-content {
   line-height: 1.5;
 }
 
-.editor-container {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  min-width: 0;
-  background-color: var(--bg-surface-2);
-  padding: 8px;
-  border-radius: 16px;
-  margin-bottom: var(--space-6);
-}
-
-.editor-inner {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-root);
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-  min-height: 120px;
-}
-
 .tiptap-editor {
   flex: 1;
   width: 100%;
   cursor: text;
-  max-height: 50vh;
   overflow-y: auto;
-  padding: 16px 16px 0 16px;
+  padding: 0;
+  margin-bottom: var(--space-4);
 }
 
 :deep(.tiptap-inner) {
-  min-height: 60px;
+  min-height: 100%;
   color: var(--text-primary);
   line-height: 1.6;
   outline: none;
   font-size: 15px;
+  padding: 8px 0;
 }
 
 :deep(.tiptap-inner p.is-editor-empty:first-child::before) {
@@ -573,7 +565,7 @@ html.dark .drawer-content {
   float: left;
   height: 0;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 :deep(.tiptap-inner p) { margin-bottom: 0.75em; }
@@ -588,13 +580,43 @@ html.dark .drawer-content {
 :deep(.tiptap-inner code) { background: var(--bg-surface-2); padding: 0.2em 0.4em; border-radius: var(--radius-micro); font-family: monospace; font-size: 0.9em; color: #E24B4A; }
 html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 
-.editor-toolbar {
+/* ── AI Prompt Box ── */
+.ai-prompt-box {
+  background-color: var(--bg-surface-2);
+  padding: 8px;
+  border-radius: 16px;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.ai-prompt-inner {
+  background-color: var(--bg-root);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px 8px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.ai-prompt-input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 15px;
+  color: var(--text-primary);
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.ai-prompt-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ai-prompt-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px 8px 12px;
-  background-color: transparent;
-  z-index: 10;
 }
 
 .toolbar-left, .toolbar-right {
