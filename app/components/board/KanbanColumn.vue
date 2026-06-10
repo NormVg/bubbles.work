@@ -249,13 +249,16 @@ html.dark .column-done {
 }
 
 .column-title {
+  margin: 0;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
   color: var(--text-primary);
   transition: color 150ms ease;
   border-radius: 4px;
   padding: 2px 4px;
   margin-left: -4px;
+  box-sizing: border-box;
 }
 
 .column-title.is-editable {
@@ -267,28 +270,31 @@ html.dark .column-done {
 }
 
 .column-title-input {
+  margin: 0;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
   color: var(--text-primary);
   background-color: transparent;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 4px;
-  padding: 1px 3px;
+  padding: 2px 4px;
   margin-left: -4px;
   outline: none;
   width: 160px;
   font-family: inherit;
   transition: all 150ms ease;
+  box-sizing: border-box;
 }
 
 .column-title-input:focus {
   background-color: rgba(255, 255, 255, 0.4);
-  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 html.dark .column-title-input:focus {
   background-color: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .task-count {
