@@ -69,16 +69,35 @@
                 <div class="draft-list">
                   <div v-for="(task, index) in draftTasks" :key="index" class="draft-card">
                     <div class="draft-card-header">
-                      <div style="display: flex; align-items: center; gap: 8px;">
-                        <span v-if="task.action === 'update'" class="update-badge">UPDATE</span>
-                        <span class="draft-title">{{ task.title }}</span>
+                      <div class="draft-header-meta">
+                        <span class="draft-action interactive" :class="task.action === 'update' ? 'action-update' : 'action-create'" @click="task.action = task.action === 'create' ? 'update' : 'create'" title="Click to toggle between Create and Update">
+                          {{ task.action.toUpperCase() }}
+                        </span>
+                        <select class="draft-priority interactive-select" :class="'prio-' + task.priority" v-model="task.priority">
+                          <option value="opt-h">HIGH</option>
+                          <option value="opt-m">MEDIUM</option>
+                          <option value="opt-l">LOW</option>
+                        </select>
                       </div>
-                      <span class="draft-priority" :class="'prio-' + task.priority">{{ formatPriority(task.priority) }}</span>
+                      <span class="draft-title">{{ task.title }}</span>
                     </div>
                     <div class="draft-meta">
-                      <div class="meta-pill"><Briefcase v-if="task.workspaceId === 'professional'" :size="12" /><User v-else-if="task.workspaceId === 'personal'" :size="12" /><Folder v-else :size="12" /><span>{{ getWorkspaceName(task.workspaceId) }}</span></div>
-                      <div class="meta-pill"><FolderTree :size="12" /><span>{{ task.categoryName || 'Inbox' }}</span></div>
-                      <div class="meta-pill"><Columns :size="12" /><span>{{ task.topicName || 'To Do' }}</span></div>
+                      <div class="meta-pill">
+                        <Briefcase v-if="task.workspaceId === 'professional'" :size="12" />
+                        <User v-else-if="task.workspaceId === 'personal'" :size="12" />
+                        <Folder v-else :size="12" />
+                        <select v-model="task.workspaceId" class="meta-select">
+                          <option v-for="ws in workspaceStore.workspaces" :key="ws.id" :value="ws.id">{{ ws.name }}</option>
+                        </select>
+                      </div>
+                      <div class="meta-pill">
+                        <FolderTree :size="12" />
+                        <input v-model="task.categoryName" class="meta-input" placeholder="Inbox" />
+                      </div>
+                      <div class="meta-pill">
+                        <Columns :size="12" />
+                        <input v-model="task.topicName" class="meta-input" placeholder="To Do" />
+                      </div>
                     </div>
                     <p v-if="task.description" class="draft-desc">{{ task.description }}</p>
                     <div v-if="task.customProperties && task.customProperties.length > 0" class="draft-custom-props">
@@ -373,7 +392,7 @@ function getExistingTasks() {
   return taskStore.tasks.map(t => ({
     id: t.id,
     title: t.title,
-    priority: t.customProperties['prop-priority'],
+    priority: t.customProperties?.['prop-priority'],
     context: t.context,
     description: t.description || ''
   }))
@@ -495,19 +514,23 @@ function confirmAndAdd() {
   }
   
   draftTasks.value.forEach(t => {
-    if (t.action === 'update' && t.taskId) {
-      // Find existing task
-      const existing = taskStore.tasks.find(x => x.id === t.taskId)
+    if (t.action === 'update') {
+      let existing = null
+      if (t.taskId) existing = taskStore.tasks.find(x => x.id === t.taskId)
+      
       if (existing) {
-        if (t.title) taskStore.updateTaskTitle(t.taskId, t.title)
-        if (t.priority) taskStore.updateCustomProperty(t.taskId, 'prop-priority', t.priority)
-        if (t.description) taskStore.updateTaskField(t.taskId, 'description', `<p>${t.description}</p>`)
+        if (t.title) taskStore.updateTaskTitle(t.taskId!, t.title)
+        if (t.priority) taskStore.updateCustomProperty(t.taskId!, 'prop-priority', t.priority)
+        if (t.description) taskStore.updateTaskField(t.taskId!, 'description', `<p>${t.description}</p>`)
         if (t.context) {
-           taskStore.updateTaskField(t.taskId, 'context', t.context)
+           taskStore.updateTaskField(t.taskId!, 'context', t.context)
         }
-        applyCustomProperties(t.taskId, t.customProperties)
+        applyCustomProperties(t.taskId!, t.customProperties || [])
+        return
+      } else {
+        // Fallback: AI marked as update but task not found. Convert to create.
+        t.action = 'create'
       }
-      return
     }
 
     let catId = null
@@ -797,22 +820,29 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   transform: translateY(-1px);
 }
 
-.draft-card-header {
+.draft-header-meta {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-4);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.update-badge {
+.draft-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.draft-action {
   font-size: 10px;
   font-weight: 700;
-  color: var(--text-on-primary, #ffffff);
-  background-color: var(--text-primary);
   padding: 3px 6px;
   border-radius: 4px;
   letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
+.action-update { background-color: var(--text-primary); color: var(--bg-root); }
+.action-create { background-color: var(--bg-surface-2); color: var(--text-secondary); border: 1px solid var(--border-default); }
 
 .draft-title {
   font-size: 16px;
@@ -865,6 +895,11 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   color: var(--text-secondary);
   margin: 0;
   line-height: 1.6;
+}
+
+.draft-custom-prop span {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .draft-footer {
@@ -1028,5 +1063,52 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 .drawer-enter-from .drawer-content,
 .drawer-leave-to .drawer-content {
   transform: translateX(100%);
+}
+
+/* Interactive UI overrides */
+.interactive {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.interactive:hover {
+  opacity: 0.8;
+}
+
+.interactive-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  outline: none;
+}
+.interactive-select:focus {
+  outline: none;
+}
+
+.meta-select, .meta-input {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+  margin: 0;
+  padding: 0;
+  min-width: 60px;
+}
+.meta-select {
+  cursor: pointer;
+}
+.meta-input {
+  cursor: text;
+}
+.meta-input::placeholder {
+  color: var(--text-muted);
 }
 </style>

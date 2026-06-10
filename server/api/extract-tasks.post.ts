@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
     aiPrompt += `\n\nCRITICAL CONTEXT - Current Date and Time:\n${currentDateTime}\nUse this as the reference point for resolving any relative dates like "tomorrow", "next week", etc.`
   }
 
-  if (categoryContext) {
+  if (categoryContext && categoryContext.length > 0) {
     aiPrompt += `\n\nExisting Workspace Structure (Categories and Topics):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nPlease organize the tasks into appropriate categories and topics (columns). Use existing ones if they match, otherwise propose new ones.`
   }
 
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (existingTasks && existingTasks.length > 0) {
-    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: If the user's prompt is asking to update, modify, or change an existing task (or if the input perfectly matches an existing task), you MUST set "action" to "update" and provide the correct "taskId" of the existing task. DO NOT create duplicate tasks. If it is a completely new request, set "action" to "create".`
+    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: ONLY set "action" to "update" if the user EXPLICITLY asks to update, modify, or change a specific task. If the user is just listing tasks or brain dumping, ALWAYS set "action" to "create", even if the task title sounds similar to an existing task. DO NOT blindly update tasks unless explicitly requested.`
   }
 
   aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [\n    { "name": "Reviewer", "type": "text" }\n  ],\n  "tasks": [\n    {\n      "action": "create" | "update",\n      "taskId": "task-123",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h" | "opt-m" | "opt-l",\n      "context": "today" | "tomorrow" | "someday",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" },\n        { "name": "Reviewer", "value": "John" }\n      ]\n    }\n  ]\n}`
@@ -72,8 +72,8 @@ export default defineEventHandler(async (event) => {
           taskId: z.string().optional().describe('The ID of the existing task to update. Required ONLY if action is update.'),
           title: z.string().describe('A concise, actionable title for the task.'),
           workspaceId: z.string().describe('The ID of the workspace this task belongs to (e.g. personal, professional, or a custom id).'),
-          categoryName: z.string().optional().describe('The name of the category this task belongs to. Use existing if appropriate, or propose a new one.'),
-          topicName: z.string().optional().describe('The name of the topic/column within the category. Use existing if appropriate, or propose a new one.'),
+          categoryName: z.string().describe('The name of the category this task belongs to. You MUST assign a logical category (e.g. "Household", "Project Alpha"). Default to "Inbox" ONLY if absolutely no category makes sense.'),
+          topicName: z.string().describe('The name of the topic/column within the category. You MUST assign a logical topic (e.g. "Chores", "Frontend"). Default to "To Do" ONLY if absolutely no topic makes sense.'),
           priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h for High, opt-m for Medium, opt-l for Low.'),
           context: z.enum(['today', 'tomorrow', 'someday']).describe('today, tomorrow, or someday based on the urgency mentioned in the prompt. default to today if unspecified.'),
           description: z.string().optional().describe('Additional context or details about the task.'),
