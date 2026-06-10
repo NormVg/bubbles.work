@@ -649,18 +649,20 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 /* ── Review UI ── */
 .review-header {
   margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .review-header h3 {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
-  margin: 0 0 var(--space-1) 0;
+  margin: 0 0 var(--space-2) 0;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .review-header p {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
@@ -669,24 +671,26 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 .draft-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  gap: 16px;
+  margin-bottom: var(--space-8);
 }
 
 .draft-card {
-  background-color: var(--bg-surface-1);
+  background-color: var(--bg-root);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-large);
-  padding: var(--space-4);
+  border-radius: 12px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  transition: all 200ms ease;
+  gap: 12px;
+  transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 
 .draft-card:hover {
   border-color: var(--border-strong);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+  transform: translateY(-1px);
 }
 
 .draft-card-header {
@@ -697,7 +701,7 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 }
 
 .draft-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.4;
@@ -706,45 +710,53 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 
 .draft-priority {
   font-size: 11px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: var(--radius-small);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  border: 1px solid transparent;
 }
-.prio-opt-h { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
-.prio-opt-m { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.prio-opt-l { background-color: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.prio-opt-h { background-color: rgba(239, 68, 68, 0.05); color: #ef4444; border-color: rgba(239, 68, 68, 0.15); }
+.prio-opt-m { background-color: rgba(245, 158, 11, 0.05); color: #f59e0b; border-color: rgba(245, 158, 11, 0.15); }
+.prio-opt-l { background-color: rgba(59, 130, 246, 0.05); color: #3b82f6; border-color: rgba(59, 130, 246, 0.15); }
 
 .draft-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .meta-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
   background-color: var(--bg-surface-2);
-  padding: 4px 8px;
-  border-radius: var(--radius-medium);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  transition: background-color 150ms ease;
+}
+
+.meta-pill:hover {
+  background-color: var(--border-default);
 }
 
 .draft-desc {
   font-size: 14px;
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .draft-footer {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: auto;
+  margin-top: 4px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -754,18 +766,18 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 .revision-box {
   display: flex;
   align-items: center;
-  background-color: var(--bg-surface-1);
+  background-color: var(--bg-root);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-large);
-  padding: 8px 12px;
-  margin-bottom: var(--space-8);
-  transition: all 200ms ease;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+  border-radius: 16px;
+  padding: 8px 16px;
+  margin-bottom: var(--space-6);
+  transition: all 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 
 .revision-box:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: 0 0 0 2px var(--bg-surface-2);
+  border-color: var(--text-primary);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
 
 .revision-input {
@@ -773,9 +785,9 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   border: none;
   background: transparent;
   outline: none;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-primary);
-  padding: 4px 0;
+  padding: 6px 0;
 }
 
 .revision-input::placeholder {
@@ -784,34 +796,45 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 }
 
 .btn-revise {
-  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text-secondary);
   background-color: var(--bg-surface-2);
-  padding: 8px;
-  border-radius: var(--radius-medium);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  transition: all 150ms ease;
+  padding: 0;
 }
 
 .btn-revise:hover:not(:disabled) {
-  background-color: var(--border-default);
+  background-color: var(--text-primary);
+  color: var(--bg-root);
 }
 
 .btn-revise:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Review Actions ── */
 .review-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-3);
+  gap: 12px;
   margin-top: auto;
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-default);
 }
 
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  border-radius: var(--radius-medium);
+  padding: 10px 20px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -821,13 +844,22 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 
 .btn-secondary {
   background-color: var(--bg-surface-2);
-  color: var(--text-secondary);
-  border-color: var(--border-default);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
 }
 
 .btn-secondary:hover {
-  background-color: var(--bg-hover);
-  color: var(--text-primary);
+  background-color: var(--border-default);
+}
+
+.btn-primary {
+  background-color: var(--text-primary);
+  color: var(--bg-root);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .btn-primary {
