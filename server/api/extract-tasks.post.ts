@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { z } from 'zod'
 
@@ -30,65 +30,145 @@ export default defineEventHandler(async (event) => {
 
   const model = ollama(aiModel)
 
-  let aiPrompt = ''
+  // ─── SYSTEM PROMPT ───
+  // Follows the Role → Task → Context → Constraints → Output Format pattern
+  const systemPrompt = `# ROLE
+You are a task extraction assistant. You read unstructured text and convert it into structured task objects.
+
+# TASK
+Parse the user's input and output a JSON object containing an array of tasks.
+Each task must have ALL required fields filled in. No field should be empty or missing.
+
+# CONSTRAINTS
+Follow these rules strictly:
+
+1. ACTION: Always set action to "create". Only use "update" if the user literally says "update task X" or "change task X" and provides an existing task ID.
+2. CONTEXT: Default is "someday". Only use "today" if the user says "today", "now", "urgent", or "ASAP". Only use "tomorrow" if the user says "tomorrow". Everything else is "someday".
+3. CATEGORY: Every task MUST have a categoryName. This is a project area like "Health", "Work", "Side Projects", "Engineering", "Design". Never leave it empty.
+4. TOPIC: Every task MUST have a topicName. This is a sub-area like "Fitness", "Frontend", "Backend", "Branding". Never leave it empty.
+5. WORKSPACE: Use "personal" for personal life tasks (health, hobbies, errands). Use "professional" for work tasks (engineering, design, meetings).
+6. PRIORITY: Use "opt-h" for high, "opt-m" for medium, "opt-l" for low. Default to "opt-m" if unclear.
+
+# OUTPUT FORMAT
+Return ONLY valid JSON. No markdown, no explanation, no code fences. Just the raw JSON object.`
+
+  // ─── USER PROMPT ───
+  // Build the user-facing prompt with clear sections
+  const promptSections: string[] = []
+
+  // Section 1: The actual user input
   if (previousDraft && revisionPrompt) {
-    aiPrompt = `You previously drafted these tasks:\n"""\n${JSON.stringify(previousDraft, null, 2)}\n"""\n\nThe user wants you to revise this draft based on these instructions:\n"""\n${revisionPrompt}\n"""\n\nPlease output the complete, newly revised list of tasks. Apply the user's requested changes to the previous draft.`
+    promptSections.push(`## REVISION REQUEST
+Previous draft:
+${JSON.stringify(previousDraft, null, 2)}
+
+User wants these changes:
+${revisionPrompt}
+
+Output the complete revised task list with changes applied.`)
   } else {
-    aiPrompt = `Extract structured tasks from the following input.\n\nInput:\n"""\n${prompt}\n"""`
+    promptSections.push(`## USER INPUT
+${prompt}`)
   }
-  
+
+  // Section 2: Current date/time for resolving relative dates
   if (currentDateTime) {
-    aiPrompt += `\n\nCRITICAL CONTEXT - Current Date and Time:\n${currentDateTime}\nUse this as the reference point for resolving any relative dates like "tomorrow", "next week", etc.`
+    promptSections.push(`## CURRENT DATE/TIME
+${currentDateTime}
+Use this to resolve relative dates like "tomorrow", "next week", etc.`)
   }
 
+  // Section 3: Available categories and topics
   if (categoryContext && categoryContext.length > 0) {
-    aiPrompt += `\n\nExisting Categories and Topics (this is the user's project organization):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nCRITICAL: Every task MUST have a categoryName and topicName. Categories are project folders (e.g. "Design Assets", "Project Alpha"). Topics are sub-sections within a category (e.g. "Brand", "Sprint planning"). Assign tasks to existing categories/topics when they fit. If no existing one matches, propose a new one. NEVER leave categoryName or topicName empty.`
-  } else {
-    aiPrompt += `\n\nCRITICAL: Every task MUST have a categoryName and topicName. categoryName is a project or area (e.g. "Health", "Work", "Side Projects"). topicName is a sub-section (e.g. "Fitness", "Frontend", "Ideas"). Propose appropriate names based on the task content. NEVER leave them empty.`
+    promptSections.push(`## AVAILABLE CATEGORIES AND TOPICS
+${JSON.stringify(categoryContext, null, 2)}
+Use existing categories/topics when they fit. Otherwise create new ones. But NEVER leave categoryName or topicName empty.`)
   }
 
-  if (propertiesSchema && propertiesSchema.length > 0) {
-    aiPrompt += `\n\nExisting Custom Properties on the Board:\n"""\n${JSON.stringify(propertiesSchema, null, 2)}\n"""\n\nYou can populate these custom properties for the tasks. If the user asks for a property that doesn't exist yet (e.g. "Add a Reviewer property set to John"), you can propose it in the "newProperties" array.`
-  }
-
+  // Section 4: Available workspaces
   if (workspaces && workspaces.length > 0) {
-    aiPrompt += `\n\nExisting Workspaces:\n"""\n${JSON.stringify(workspaces, null, 2)}\n"""\n\nCRITICAL INSTRUCTION: You must assign each task to an appropriate workspace by specifying "workspaceId". If the task is related to personal life, assign it to the 'personal' workspace. If it is related to work/career, assign it to the 'professional' workspace. You can also use other custom workspaces if they match the context better.`
+    promptSections.push(`## AVAILABLE WORKSPACES
+${JSON.stringify(workspaces, null, 2)}
+Assign each task to the best workspace. Personal life → "personal". Work → "professional".`)
   }
 
+  // Section 5: Existing tasks (for update detection only)
   if (existingTasks && existingTasks.length > 0) {
-    aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nIMPORTANT ABOUT UPDATES: Almost always use "action": "create". Only use "action": "update" if the user says words like "change", "modify", "update", "rename" referring to a SPECIFIC existing task by name. If the user is just adding new things, ALWAYS use "create" even if a similar task already exists.`
+    promptSections.push(`## EXISTING TASKS (for reference only)
+${JSON.stringify(existingTasks, null, 2)}
+Only set action to "update" if the user EXPLICITLY asks to modify one of these tasks.`)
   }
 
-  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [],\n  "tasks": [\n    {\n      "action": "create",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Health",\n      "topicName": "Fitness",\n      "priority": "opt-m",\n      "context": "someday",\n      "description": "Optional description",\n      "customProperties": []\n    }\n  ]\n}`
+  // Section 6: Custom properties schema
+  if (propertiesSchema && propertiesSchema.length > 0) {
+    promptSections.push(`## CUSTOM PROPERTIES AVAILABLE
+${JSON.stringify(propertiesSchema, null, 2)}
+Populate these if relevant. Propose new ones in "newProperties" if the user asks for a property that doesn't exist.`)
+  }
+
+  // Section 7: Example output
+  promptSections.push(`## EXAMPLE OUTPUT
+{
+  "newProperties": [],
+  "tasks": [
+    {
+      "action": "create",
+      "title": "Go for a morning run",
+      "workspaceId": "personal",
+      "categoryName": "Health",
+      "topicName": "Fitness",
+      "priority": "opt-m",
+      "context": "someday",
+      "description": "30 minute jog in the park"
+    },
+    {
+      "action": "create",
+      "title": "Review pull request #42",
+      "workspaceId": "professional",
+      "categoryName": "Engineering",
+      "topicName": "Code Review",
+      "priority": "opt-h",
+      "context": "someday",
+      "description": "Review the authentication refactor PR"
+    }
+  ]
+}`)
+
+  const userPrompt = promptSections.join('\n\n')
 
   try {
-    const result = await generateObject({
+    const result = await generateText({
       model,
-      schema: z.object({
-        newProperties: z.array(z.object({
-          name: z.string().describe('Name of the new property to create.'),
-          type: z.enum(['text', 'number', 'select', 'date']).describe('Type of the new property.')
-        })).optional().describe('Any completely new properties the user wants to track globally on tasks.'),
-        tasks: z.array(z.object({
-          action: z.enum(['create', 'update']).describe('ALMOST ALWAYS use create. Only use update when user explicitly says to change/modify a specific existing task.'),
-          taskId: z.string().optional().describe('Only required if action is update. Must be an exact id from the existing tasks list.'),
-          title: z.string().describe('A concise, actionable title for the task.'),
-          workspaceId: z.string().describe('The workspace id. Use personal for personal life tasks, professional for work tasks.'),
-          categoryName: z.string().describe('REQUIRED. A project or area name for this task (e.g. Health, Work, Side Projects). Always provide one.'),
-          topicName: z.string().describe('REQUIRED. A sub-section within the category (e.g. Fitness, Frontend, Ideas). Always provide one.'),
-          priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h = High, opt-m = Medium, opt-l = Low. Pick based on urgency.'),
-          context: z.enum(['today', 'tomorrow', 'someday']).describe('DEFAULT is someday. Only use today if the user explicitly says today/now/urgent/ASAP. Only use tomorrow if user says tomorrow. Otherwise always use someday.'),
-          description: z.string().optional().describe('Additional context or details about the task.'),
-          customProperties: z.array(z.object({
-            name: z.string().describe('The name of the property. Must match an existing property name or one defined in newProperties.'),
-            value: z.any().describe('The value to set for this property. For dates, use YYYY-MM-DD. For selects, use the label string.')
-          })).optional().describe('Values for dynamic custom properties.')
-        }))
+      system: systemPrompt,
+      output: Output.object({
+        name: 'TaskExtraction',
+        description: 'Extract structured tasks from user input. Every task must have categoryName and topicName filled in. Default context is someday.',
+        schema: z.object({
+          newProperties: z.array(z.object({
+            name: z.string(),
+            type: z.enum(['text', 'number', 'select', 'date'])
+          })).optional(),
+          tasks: z.array(z.object({
+            action: z.enum(['create', 'update']).default('create'),
+            taskId: z.string().optional(),
+            title: z.string(),
+            workspaceId: z.string(),
+            categoryName: z.string(),
+            topicName: z.string(),
+            priority: z.enum(['opt-h', 'opt-m', 'opt-l']).default('opt-m'),
+            context: z.enum(['today', 'tomorrow', 'someday']).default('someday'),
+            description: z.string().optional(),
+            customProperties: z.array(z.object({
+              name: z.string(),
+              value: z.any()
+            })).optional()
+          }))
+        })
       }),
-      prompt: aiPrompt
+      prompt: userPrompt
     })
 
-    return { tasks: result.object.tasks, newProperties: result.object.newProperties }
+    return { tasks: result.output?.tasks ?? [], newProperties: result.output?.newProperties ?? [] }
   } catch (error: any) {
     console.error('[AI Task Extraction Error]:', error)
     throw createError({
