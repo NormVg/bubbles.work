@@ -518,29 +518,17 @@ html.dark .drawer-content {
   display: flex;
   flex-direction: column;
   position: relative;
-  background-color: var(--bg-surface-1);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-large);
-  padding: var(--space-4) var(--space-4) 0 var(--space-4);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.editor-container:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: 0 0 0 2px var(--bg-surface-2);
+  min-width: 0;
 }
 
 .tiptap-editor {
   flex: 1;
   width: 100%;
   cursor: text;
-  overflow-y: auto;
-  padding-bottom: var(--space-4);
 }
 
 :deep(.tiptap-inner) {
-  min-height: 100%;
+  min-height: 300px;
   color: var(--text-primary);
   line-height: 1.6;
   outline: none;
@@ -564,6 +552,7 @@ html.dark .drawer-content {
 :deep(.tiptap-inner ol) { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
 :deep(.tiptap-inner blockquote) { border-left: 3px solid var(--border-strong); padding-left: 1em; margin-left: 0; color: var(--text-secondary); font-style: italic; }
 :deep(.tiptap-inner pre) { background: var(--bg-surface-2); padding: 1em; border-radius: var(--radius-medium); overflow-x: auto; font-family: monospace; font-size: 13px; }
+:deep(.tiptap-inner img) { max-width: 100%; height: auto; display: block; border-radius: var(--radius-medium); border: 1px solid var(--border-default); margin: 1em 0; box-sizing: border-box; }
 :deep(.tiptap-inner code) { background: var(--bg-surface-2); padding: 0.2em 0.4em; border-radius: var(--radius-micro); font-family: monospace; font-size: 0.9em; color: #E24B4A; }
 html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 
@@ -571,9 +560,13 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) 0;
-  margin-top: auto;
+  padding: var(--space-4) var(--space-6);
+  margin: 0 -24px -64px -24px;
+  background-color: var(--bg-surface-1);
   border-top: 1px solid var(--border-default);
+  z-index: 10;
+  position: sticky;
+  bottom: 0;
 }
 
 .toolbar-left, .toolbar-right {
