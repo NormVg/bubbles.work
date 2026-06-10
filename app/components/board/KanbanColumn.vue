@@ -270,17 +270,25 @@ html.dark .column-done {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
-  background-color: var(--bg-surface-1);
-  border: 1px solid var(--border-default);
+  background-color: transparent;
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 1px 3px;
   margin-left: -4px;
   outline: none;
-  width: 120px;
+  width: 160px;
+  font-family: inherit;
+  transition: all 150ms ease;
 }
 
 .column-title-input:focus {
-  border-color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html.dark .column-title-input:focus {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .task-count {
