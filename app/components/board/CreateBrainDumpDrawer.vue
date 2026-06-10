@@ -24,25 +24,34 @@
               </p>
 
               <div class="editor-container" :class="{ 'is-drafting': viewState === 'drafting' }">
-                <editor-content :editor="editor" class="tiptap-editor" />
-                
-                <div class="editor-toolbar">
-                  <div class="toolbar-left">
-                    <UiMicButton 
-                      @update:text="handleDictation" 
-                      @stop="handleMicStop" 
-                    />
-                  </div>
-                  <div class="toolbar-right">
-                    <button 
-                      class="btn-generate" 
-                      @click="extractTasks" 
-                      :disabled="viewState === 'drafting' || isEditorEmpty"
-                    >
-                      <Loader2 v-if="viewState === 'drafting'" class="spinner" :size="16" />
-                      <Sparkles v-else :size="16" />
-                      <span>{{ viewState === 'drafting' ? 'Drafting...' : 'Draft Tasks' }}</span>
-                    </button>
+                <div class="editor-inner">
+                  <editor-content :editor="editor" class="tiptap-editor" />
+                  
+                  <div class="editor-toolbar">
+                    <div class="toolbar-left">
+                      <button class="icon-btn action-btn" title="Attach file" disabled>
+                        <Paperclip :size="16" />
+                      </button>
+                      <UiMicButton 
+                        @update:text="handleDictation" 
+                        @stop="handleMicStop" 
+                      />
+                      <div class="model-pill">
+                        <Cpu :size="12" />
+                        <span>{{ settingsStore.aiModel || 'gpt-4o' }}</span>
+                      </div>
+                    </div>
+                    <div class="toolbar-right">
+                      <button 
+                        class="btn-submit" 
+                        @click="extractTasks" 
+                        :disabled="viewState === 'drafting' || isEditorEmpty"
+                        title="Draft Tasks"
+                      >
+                        <Loader2 v-if="viewState === 'drafting'" class="spinner" :size="16" />
+                        <CornerDownLeft v-else :size="16" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -110,7 +119,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount, computed } from 'vue'
-import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check, FolderTree, Columns, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon } from '@lucide/vue'
+import { X, Sparkles, Loader2, AlertCircle, ArrowUp, Check, FolderTree, Columns, Heading1, Heading2, Heading3, List as ListIcon, Code, Quote, Minus, Image as ImageIcon, Link as LinkIcon, Paperclip, Cpu, CornerDownLeft } from '@lucide/vue'
 import { useUIStore } from '~/stores/ui.store'
 import { useSettingsStore } from '~/stores/settings.store'
 import { useTaskStore } from '~/stores/task.store'
@@ -157,7 +166,7 @@ watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
           Image.configure({ inline: true }),
           Link.configure({ openOnClick: false }),
           Placeholder.configure({
-            placeholder: 'Type or click the mic to speak...',
+            placeholder: 'Dump your mind, let me manage',
           }),
           SlashCommandsExtension.configure({
             suggestion: {
@@ -532,12 +541,29 @@ html.dark .drawer-content {
   flex-direction: column;
   position: relative;
   min-width: 0;
+  background-color: var(--bg-surface-2);
+  padding: 12px;
+  border-radius: 16px;
+  margin-bottom: var(--space-6);
+}
+
+.editor-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-root);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .tiptap-editor {
   flex: 1;
   width: 100%;
   cursor: text;
+  overflow-y: auto;
+  padding: 16px 20px;
 }
 
 :deep(.tiptap-inner) {
@@ -573,59 +599,54 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  margin: auto auto 0 auto;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-xl);
+  padding: 8px 16px 12px 16px;
+  background-color: transparent;
   z-index: 10;
-  position: sticky;
-  bottom: 24px;
-  width: 100%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  transform: translateY(-8px);
-}
-
-html.dark .editor-toolbar {
-  background-color: rgba(10, 10, 10, 0.8);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .toolbar-left, .toolbar-right {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
 }
 
-.btn-generate {
+.action-btn {
+  padding: 6px;
+}
+
+.model-pill {
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--text-primary);
-  color: var(--bg-root);
-  border: 1px solid transparent;
-  border-radius: var(--radius-medium);
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 150ms cubic-bezier(0.2, 0, 0, 1);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.1);
-}
-
-.btn-generate:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
-}
-
-.btn-generate:disabled {
-  background-color: var(--bg-surface-2);
+  font-size: 12px;
   color: var(--text-muted);
-  border-color: var(--border-default);
+  font-family: monospace;
+  padding: 4px 8px;
+  margin-left: 4px;
+}
+
+.btn-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-medium);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background-color: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+.btn-submit:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .is-drafting {
