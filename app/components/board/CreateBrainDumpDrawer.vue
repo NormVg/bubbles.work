@@ -29,17 +29,10 @@
                   
                   <div class="editor-toolbar">
                     <div class="toolbar-left">
-                      <button class="icon-btn action-btn" title="Attach file" disabled>
-                        <Paperclip :size="16" />
-                      </button>
                       <UiMicButton 
                         @update:text="handleDictation" 
                         @stop="handleMicStop" 
                       />
-                      <div class="model-pill">
-                        <Cpu :size="12" />
-                        <span>{{ settingsStore.aiModel || 'gpt-4o' }}</span>
-                      </div>
                     </div>
                     <div class="toolbar-right">
                       <button 
@@ -554,14 +547,16 @@ html.dark .drawer-content {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  min-height: 120px;
 }
 
 .tiptap-editor {
+  flex: 1;
   width: 100%;
   cursor: text;
   max-height: 50vh;
   overflow-y: auto;
-  padding: 16px 16px 8px 16px;
+  padding: 16px 16px 0 16px;
 }
 
 :deep(.tiptap-inner) {
@@ -597,7 +592,7 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px 12px 16px;
+  padding: 8px 12px 8px 12px;
   background-color: transparent;
   z-index: 10;
 }
@@ -606,21 +601,6 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.action-btn {
-  padding: 6px;
-}
-
-.model-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-family: monospace;
-  padding: 4px 8px;
-  margin-left: 4px;
 }
 
 .btn-submit {
