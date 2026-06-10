@@ -9,6 +9,7 @@ export interface Task {
 export interface Category {
   id: string
   name: string
+  workspaceId?: string
   tasks: Task[]
   children: Category[]
   isExpanded: boolean
@@ -76,10 +77,11 @@ export const useCategoryStore = defineStore('category', {
         category.isExpanded = !category.isExpanded
       }
     },
-    addCategory(parentId: string | null, name: string) {
+    addCategory(parentId: string | null, name: string, workspaceId?: string) {
       const newCat: Category = {
         id: 'cat-' + Date.now(),
         name,
+        workspaceId,
         tasks: [],
         children: [],
         isExpanded: true

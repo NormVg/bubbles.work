@@ -9,7 +9,7 @@
 
     <div class="tree-list">
       <CategoryNode 
-        v-for="category in categoryStore.categories" 
+        v-for="category in visibleCategories" 
         :key="category.id" 
         :category="category" 
         :depth="0" 
@@ -19,18 +19,30 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Plus } from '@lucide/vue'
 import { useCategoryStore } from '~/stores/category.store'
+import { useWorkspaceStore } from '~/stores/workspace.store'
 import { useUIStore } from '~/stores/ui.store'
 import CategoryNode from './CategoryNode.vue'
 
 const categoryStore = useCategoryStore()
+const workspaceStore = useWorkspaceStore()
 const uiStore = useUIStore()
+
+const visibleCategories = computed(() => {
+  if (workspaceStore.activeWorkspaceId === 'all') {
+    return categoryStore.categories
+  }
+  return categoryStore.categories.filter(c => 
+    !c.workspaceId || c.workspaceId === workspaceStore.activeWorkspaceId
+  )
+})
 
 async function addRootCategory() {
   const name = await uiStore.promptUser('Category Name')
   if (name) {
-    categoryStore.addCategory(null, name)
+    categoryStore.addCategory(null, name, workspaceStore.activeWorkspaceId === 'all' ? undefined : workspaceStore.activeWorkspaceId)
   }
 }
 </script>

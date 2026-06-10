@@ -101,12 +101,18 @@
                       <!-- Category -->
                       <select v-model="task.categoryName" class="meta-select">
                         <option value="">No Category</option>
+                        <option v-if="task.categoryName && !categoryStore.categories.find(c => c.name === task.categoryName)" :value="task.categoryName">
+                          {{ task.categoryName }} (New)
+                        </option>
                         <option v-for="cat in categoryStore.categories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
                       </select>
 
                       <!-- Topic (dynamic based on category) -->
                       <select v-model="task.topicName" class="meta-select">
                         <option value="">Default</option>
+                        <option v-if="task.topicName && !getTopicsForCategory(task.categoryName).find(t => t.name === task.topicName)" :value="task.topicName">
+                          {{ task.topicName }} (New)
+                        </option>
                         <option 
                           v-for="topic in getTopicsForCategory(task.categoryName)" 
                           :key="topic.id" 
@@ -494,13 +500,13 @@ async function reviseDraft() {
 }
 
 /** Find or create a category + topic, return the topic task ID to use as context */
-function resolveTopicId(categoryName: string, topicName?: string): string | null {
+function resolveTopicId(categoryName: string, topicName?: string, workspaceId?: string): string | null {
   if (!categoryName) return null
   
   // Find or create category
   let cat = categoryStore.categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase())
   if (!cat) {
-    categoryStore.addCategory(null, categoryName)
+    categoryStore.addCategory(null, categoryName, workspaceId)
     cat = categoryStore.categories[categoryStore.categories.length - 1]
   }
   if (!cat) return null
@@ -583,7 +589,7 @@ function confirmAndAdd() {
         // Handle context change via category/topic
         let newContext = t.context || existing.context
         if (t.categoryName) {
-          const topicId = resolveTopicId(t.categoryName, t.topicName)
+          const topicId = resolveTopicId(t.categoryName, t.topicName, t.workspaceId)
           if (topicId) newContext = topicId
         }
         if (newContext !== existing.context) {
@@ -598,7 +604,7 @@ function confirmAndAdd() {
     let taskContext = t.context || 'someday'
     
     if (t.categoryName) {
-      const topicId = resolveTopicId(t.categoryName, t.topicName)
+      const topicId = resolveTopicId(t.categoryName, t.topicName, t.workspaceId)
       if (topicId) taskContext = topicId
     }
 
