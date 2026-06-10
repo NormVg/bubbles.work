@@ -250,6 +250,32 @@ watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
               }
             }
             return handled
+          },
+          handleDrop: (view, event, slice, moved) => {
+            if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+              let handled = false
+              for (const file of Array.from(event.dataTransfer.files)) {
+                if (file.type.indexOf('image') === 0) {
+                  event.preventDefault()
+                  const reader = new FileReader()
+                  reader.onload = (e) => {
+                    const result = e.target?.result
+                    if (typeof result === 'string') {
+                      const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY })
+                      if (coordinates) {
+                        editor?.chain().focus().setTextSelection(coordinates.pos).setImage({ src: result }).run()
+                      } else {
+                        editor?.commands.setImage({ src: result })
+                      }
+                    }
+                  }
+                  reader.readAsDataURL(file)
+                  handled = true
+                }
+              }
+              return handled
+            }
+            return false
           }
         }
       })
