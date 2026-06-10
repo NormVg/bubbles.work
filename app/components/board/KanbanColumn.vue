@@ -1,10 +1,10 @@
 <template>
-  <div class="kanban-column" :class="'column-' + status">
+  <div class="kanban-column" :class="isStandardStatus ? 'column-' + status : 'column-dynamic'" :style="dynamicColumnStyle">
     <!-- Column Header -->
     <div class="column-header">
       <div class="header-left">
-        <div class="status-badge" :class="`badge-${status}`">
-          <span class="status-dot" :class="`dot-${status}`" />
+        <div class="status-badge" :class="isStandardStatus ? `badge-${status}` : 'badge-dynamic'" :style="dynamicBadgeStyle">
+          <span class="status-dot" :class="isStandardStatus ? `dot-${status}` : 'dot-dynamic'" :style="dynamicDotStyle" />
           <h3 class="column-title">{{ title }}</h3>
           <span class="task-count">{{ tasks.length }}</span>
         </div>
@@ -54,9 +54,10 @@ import type { BoardTask, TaskStatus } from '~/stores/task.store'
 
 const props = defineProps<{
   title: string
-  status: TaskStatus
+  status: TaskStatus | string
   tasks: BoardTask[]
   context: string
+  color?: string
 }>()
 
 const emit = defineEmits<{
@@ -64,6 +65,31 @@ const emit = defineEmits<{
   add: [status: TaskStatus]
   remove: [taskId: string]
 }>()
+
+const isStandardStatus = computed(() => ['open', 'live', 'done'].includes(props.status))
+
+const dynamicColumnStyle = computed(() => {
+  if (isStandardStatus.value || !props.color) return {}
+  return {
+    backgroundColor: `${props.color}0A`, // 0A = approx 4% opacity
+    borderColor: `${props.color}99`, // 99 = approx 60% opacity
+  }
+})
+
+const dynamicBadgeStyle = computed(() => {
+  if (isStandardStatus.value || !props.color) return {}
+  return {
+    backgroundColor: `${props.color}1A`, // 1A = approx 10% opacity
+  }
+})
+
+const dynamicDotStyle = computed(() => {
+  if (isStandardStatus.value || !props.color) return {}
+  return {
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(props.color)}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='4' fill='${encodeURIComponent(props.color)}'/%3E%3C/svg%3E")`,
+    backgroundSize: 'cover'
+  }
+})
 
 const localTasks = computed({
   get: () => props.tasks,
@@ -74,15 +100,24 @@ const localTasks = computed({
 </script>
 
 <style scoped>
+.column-dynamic {
+  background-color: var(--bg-surface-2);
+  border: 1px dashed var(--border-default);
+}
+.dot-dynamic {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E");
+  background-size: cover;
+}
+
 .kanban-column {
   display: flex;
   flex-direction: column;
-  min-height: 300px;
+  min-height: 500px;
   width: 100%;
   border-radius: var(--radius-large);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-2) var(--space-3);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
-  transition: background-color 200ms ease, border-color 200ms ease;
+  transition: all 300ms cubic-bezier(0.25, 1, 0.5, 1);
   background-image: repeating-linear-gradient(
     -45deg,
     rgba(0, 0, 0, 0.05),
@@ -240,7 +275,7 @@ html.dark .column-done {
   flex-direction: column;
   gap: var(--space-2);
   min-height: 100px;
-  height: 100%;
+  flex: 1;
 }
 
 /* ── Empty State ── */

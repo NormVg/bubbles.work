@@ -57,6 +57,38 @@
           </div>
         </div>
 
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">Ollama API Key</h3>
+            <p class="setting-desc">Enter your Ollama API key for the Brain Dump AI. Required for task extraction.</p>
+          </div>
+          <div class="setting-action">
+            <input 
+              v-model="ollamaKeyInput"
+              type="password"
+              placeholder="sk_..."
+              class="text-input"
+              @blur="saveOllamaKey"
+            />
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <h3 class="setting-name">AI Model</h3>
+            <p class="setting-desc">Enter the Ollama model to use for task extraction (e.g. llama3.1, deepseek-r1:7b, etc).</p>
+          </div>
+          <div class="setting-action">
+            <input 
+              v-model="aiModelInput"
+              type="text"
+              placeholder="e.g. llama3.1"
+              class="text-input"
+              @blur="saveAiModel"
+            />
+          </div>
+        </div>
+
         <div class="setting-item test-area">
           <div class="setting-info">
             <h3 class="setting-name">Test Microphone</h3>
@@ -88,11 +120,21 @@ const settingsStore = useSettingsStore()
 const colorMode = useColorMode()
 
 const sarvamKeyInput = ref(settingsStore.sarvamApiKey || '')
+const ollamaKeyInput = ref(settingsStore.ollamaApiKey || '')
+const aiModelInput = ref(settingsStore.aiModel || 'llama3.1')
 const testTranscript = ref('')
 const testError = ref('')
 
 function saveSarvamKey() {
   settingsStore.setSarvamApiKey(sarvamKeyInput.value.trim() || null)
+}
+
+function saveOllamaKey() {
+  settingsStore.setOllamaApiKey(ollamaKeyInput.value.trim() || null)
+}
+
+function saveAiModel() {
+  settingsStore.setAiModel(aiModelInput.value.trim() || 'llama3.1')
 }
 
 function handleDictation(text: string) {

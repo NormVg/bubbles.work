@@ -4,12 +4,13 @@
     <div 
       class="row" 
       :style="{ paddingLeft: `${12 + depth * 16}px` }"
-      @click="categoryStore.toggleCategory(category.id)"
     >
-      <div class="expand-icon" :class="{ 'is-expanded': category.isExpanded }">
+      <div class="expand-icon" :class="{ 'is-expanded': category.isExpanded }" @click="categoryStore.toggleCategory(category.id)">
         <ChevronRight :size="12" :stroke-width="1.5" />
       </div>
-      <span class="row-label">{{ category.name }}</span>
+      <NuxtLink :to="`/dashboard/category/${category.id}`" class="row-label category-link" :class="{ 'is-active-link': $route.path === `/dashboard/category/${category.id}` }">
+        {{ category.name }}
+      </NuxtLink>
       <div class="row-actions" @click.stop>
         <button class="action-btn" @click="addSubCategory" aria-label="Add Sub-category" title="Add sub-category">
           <FolderPlus :size="12" :stroke-width="1.5" />
@@ -134,6 +135,15 @@ function removeTask(taskId: string) {
   flex: 1;
   font-weight: 500;
   color: var(--text-primary);
+}
+
+.category-link {
+  text-decoration: none;
+}
+
+.category-link:hover, .is-active-link {
+  color: var(--text-primary);
+  text-decoration: underline;
 }
 
 .task-row .row-label {

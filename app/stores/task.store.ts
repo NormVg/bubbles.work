@@ -172,6 +172,18 @@ export const useTaskStore = defineStore('tasks', {
         }
       })
     },
+    updateTaskContextOrders(newContext: string, orderedTasks: BoardTask[]) {
+      orderedTasks.forEach((task, index) => {
+        const t = this.tasks.find(x => x.id === task.id)
+        if (t) {
+          t.order = index
+          if (t.context !== newContext) {
+            t.context = newContext
+            t.status = 'open'
+          }
+        }
+      })
+    },
     removeTask(taskId: string) {
       this.tasks = this.tasks.filter(t => t.id !== taskId)
       this.realignIdentifiers()

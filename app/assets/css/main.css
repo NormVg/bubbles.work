@@ -1,4 +1,5 @@
 :root {
+  interpolate-size: allow-keywords;
   /* Spacing Scale */
   --space-1: 4px;
   --space-2: 8px;

@@ -6,6 +6,8 @@ export interface SettingsState {
   defaultWorkspaceId: string | null
   sarvamApiKey: string | null
   sttEngine: 'sarvam' | 'native'
+  ollamaApiKey: string | null
+  aiModel: string
 }
 
 export const useSettingsStore = defineStore('settings', {
@@ -14,7 +16,9 @@ export const useSettingsStore = defineStore('settings', {
     notificationsEnabled: true,
     defaultWorkspaceId: null,
     sarvamApiKey: null,
-    sttEngine: 'native'
+    sttEngine: 'native',
+    ollamaApiKey: null,
+    aiModel: 'llama3'
   }),
   actions: {
     toggleCompactMode() {
@@ -31,6 +35,12 @@ export const useSettingsStore = defineStore('settings', {
     },
     setSttEngine(engine: 'sarvam' | 'native') {
       this.sttEngine = engine
+    },
+    setOllamaApiKey(key: string | null) {
+      this.ollamaApiKey = key
+    },
+    setAiModel(model: string) {
+      this.aiModel = model
     }
   },
   persist: true

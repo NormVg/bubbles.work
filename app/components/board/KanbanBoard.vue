@@ -1,13 +1,14 @@
 <template>
-  <div class="kanban-board">
+  <div class="kanban-board" :class="{ 'is-category-board': isCategoryBoard }">
     <BoardKanbanColumn
-      v-for="column in columns"
-      :key="column.status"
+      v-for="column in activeColumns"
+      :key="column.id"
       :title="column.title"
-      :status="column.status"
-      :tasks="orderedTasks(column.status)"
-      :context="context"
-      @update="val => onColumnUpdate(column.status, val)"
+      :status="column.id"
+      :color="column.color"
+      :tasks="orderedTasks(column.id)"
+      :context="context || 'today'"
+      @update="val => onColumnUpdate(column.id, val)"
       @add="onAdd"
       @remove="onRemove"
     />
@@ -21,21 +22,32 @@ import { useTaskStore, type TaskStatus, type BoardTask } from '~/stores/task.sto
 import { useUIStore } from '~/stores/ui.store'
 
 const props = defineProps<{
-  context: string
+  context?: string
+  isCategoryBoard?: boolean
+  columns?: { id: string, title: string, color?: string }[]
 }>()
 
 const taskStore = useTaskStore()
 const uiStore = useUIStore()
 
-const columns = [
-  { title: 'Open', status: 'open' as TaskStatus },
-  { title: 'Live', status: 'live' as TaskStatus },
-  { title: 'Done', status: 'done' as TaskStatus }
+const defaultColumns = [
+  { title: 'Open', id: 'open' },
+  { title: 'Live', id: 'live' },
+  { title: 'Done', id: 'done' }
 ]
 
-function orderedTasks(status: TaskStatus) {
-  const tasks = taskStore.getTasksByStatus(props.context, status)
-  return [...tasks].sort((a, b) => a.order - b.order)
+const activeColumns = computed(() => {
+  return props.columns || defaultColumns
+})
+
+function orderedTasks(columnId: string) {
+  if (props.isCategoryBoard) {
+    const tasks = taskStore.getTasksByContext(columnId)
+    return [...tasks].sort((a, b) => a.order - b.order)
+  } else {
+    const tasks = taskStore.getTasksByStatus(props.context || 'today', columnId as TaskStatus)
+    return [...tasks].sort((a, b) => a.order - b.order)
+  }
 }
 
 function fireConfetti() {
@@ -64,21 +76,27 @@ function fireConfetti() {
   }());
 }
 
-function onColumnUpdate(status: TaskStatus, tasks: BoardTask[]) {
-  // Check if a task just moved into 'done' by comparing lengths
-  const previousDoneCount = taskStore.getTasksByStatus(props.context, 'done').length
-  
-  taskStore.updateTaskOrders(props.context, status, tasks)
-  
-  if (status === 'done' && tasks.length > previousDoneCount) {
-    fireConfetti()
+function onColumnUpdate(columnId: string, tasks: BoardTask[]) {
+  if (props.isCategoryBoard) {
+    taskStore.updateTaskContextOrders(columnId, tasks)
+  } else {
+    const previousDoneCount = taskStore.getTasksByStatus(props.context || 'today', 'done').length
+    taskStore.updateTaskOrders(props.context || 'today', columnId as TaskStatus, tasks)
+    
+    if (columnId === 'done' && tasks.length > previousDoneCount) {
+      fireConfetti()
+    }
   }
 }
 
-async function onAdd(status: TaskStatus) {
+async function onAdd(columnId: string) {
   const title = await uiStore.promptUser('Task Name')
   if (title) {
-    taskStore.addTask(title, props.context, status)
+    if (props.isCategoryBoard) {
+      taskStore.addTask(title, columnId, 'open')
+    } else {
+      taskStore.addTask(title, props.context || 'today', columnId as TaskStatus)
+    }
   }
 }
 
@@ -89,19 +107,29 @@ function onRemove(taskId: string) {
 
 <style scoped>
 .kanban-board {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 340px));
-  justify-content: start;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: var(--space-4);
-  height: 100%;
+  flex: 1;
   min-height: 0;
   padding-bottom: var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.kanban-board > * {
+  width: 340px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {
   .kanban-board {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
+    flex-direction: column;
+    overflow-x: visible;
+  }
+  .kanban-board > * {
+    width: 100%;
   }
 }
 </style>

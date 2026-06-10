@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 export interface Task {
   id: string
   name: string
+  color?: string
 }
 
 export interface Category {
@@ -100,7 +101,9 @@ export const useCategoryStore = defineStore('category', {
       const category = findCategory(this.categories, categoryId)
       if (category) {
         const id = 'task-' + Date.now()
-        category.tasks.push({ id, name })
+        const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316']
+        const color = COLORS[Math.floor(Math.random() * COLORS.length)]
+        category.tasks.push({ id, name, color })
         category.isExpanded = true
       }
     },

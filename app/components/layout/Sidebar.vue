@@ -87,7 +87,7 @@
       <!-- Tools -->
       <nav class="nav-section">
         <LayoutSidebarItem 
-          to="/dashboard/create"
+          @click="uiStore.openCreateDrawer()"
           :icon="PenLine"
           label="Create"
           :isCollapsed="uiStore.isSidebarCollapsed"

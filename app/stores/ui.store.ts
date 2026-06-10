@@ -4,6 +4,7 @@ export const useUIStore = defineStore('ui', {
   state: () => ({
     isSidebarCollapsed: false,
     activeTaskId: null as string | null,
+    isCreateDrawerOpen: false,
     promptConfig: null as { title: string; defaultValue?: string; placeholder?: string } | null,
     promptResolve: null as ((value: string | null) => void) | null,
   }),
@@ -19,6 +20,12 @@ export const useUIStore = defineStore('ui', {
     },
     closeTaskDrawer() {
       this.activeTaskId = null
+    },
+    openCreateDrawer() {
+      this.isCreateDrawerOpen = true
+    },
+    closeCreateDrawer() {
+      this.isCreateDrawerOpen = false
     },
     promptUser(title: string, placeholder?: string, defaultValue?: string): Promise<string | null> {
       return new Promise((resolve) => {

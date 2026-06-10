@@ -2,14 +2,15 @@
   <div class="page">
     <header class="page-header">
       <LayoutBreadcrumbs :items="breadcrumbs" />
-      <h1 class="page-title">{{ topicName }}</h1>
-      <p class="page-description">Board for {{ topicName }}</p>
+      <h1 class="page-title">{{ categoryName }}</h1>
+      <p class="page-description">Overview for category {{ categoryName }}</p>
     </header>
-    
-    <BoardTopicSwitcher v-if="siblingTopics" :topics="siblingTopics" />
-    
     <div class="board-area">
-      <BoardKanbanBoard :context="route.params.id as string" />
+      <BoardKanbanBoard 
+        isCategoryBoard 
+        :columns="topicColumns" 
+        :context="route.params.id as string" 
+      />
     </div>
   </div>
 </template>
@@ -28,20 +29,24 @@ const route = useRoute()
 const navigation = useNavigation()
 const topicSwitcher = useTopicSwitcher()
 
-const topicId = computed(() => route.params.id as string)
+const categoryId = computed(() => route.params.id as string)
 
 const breadcrumbs = computed(() => {
-  return navigation.getBreadcrumbs(topicId.value, 'topic')
+  return navigation.getBreadcrumbs(categoryId.value, 'category')
 })
 
-const topicName = computed(() => {
+const categoryName = computed(() => {
   const crumbs = breadcrumbs.value
-  return crumbs.length > 0 ? crumbs[crumbs.length - 1].label : 'Topic Board'
+  return crumbs.length > 0 ? crumbs[crumbs.length - 1].label : 'Category'
 })
 
-const siblingTopics = computed(() => {
-  const result = topicSwitcher.getSiblingTopics(topicId.value)
-  return result ? result.topics : []
+const topicColumns = computed(() => {
+  const topics = topicSwitcher.getTopicsByCategory(categoryId.value)
+  return topics.map(t => ({
+    id: t.id,
+    title: t.name,
+    color: t.color
+  }))
 })
 </script>
 

@@ -12,6 +12,7 @@
     </main>
     <ClientOnly>
       <BoardTaskDrawer />
+      <BoardCreateBrainDumpDrawer />
       <UiPromptModal />
     </ClientOnly>
   </div>
@@ -41,5 +42,7 @@
   padding: var(--space-8);
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 </style>

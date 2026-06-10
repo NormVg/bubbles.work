@@ -1,5 +1,6 @@
 <template>
   <NuxtLink
+    v-if="to"
     :to="to"
     class="sidebar-item"
     :class="{ 'is-collapsed': isCollapsed }"
@@ -15,11 +16,28 @@
       <slot name="action" />
     </div>
   </NuxtLink>
+
+  <button
+    v-else
+    class="sidebar-item"
+    :class="{ 'is-collapsed': isCollapsed }"
+  >
+    <div class="icon-wrapper">
+      <component v-if="icon" :is="icon" :size="16" :stroke-width="1.5" />
+      <span v-else-if="textIcon" class="text-icon">{{ textIcon }}</span>
+    </div>
+    <Transition name="fade">
+      <span v-if="!isCollapsed" class="label">{{ label }}</span>
+    </Transition>
+    <div v-if="!isCollapsed" class="action-wrapper" @click.prevent>
+      <slot name="action" />
+    </div>
+  </button>
 </template>
 
 <script setup lang="ts">
 defineProps<{
-  to: string;
+  to?: string;
   icon?: any;
   textIcon?: string;
   label: string;
@@ -40,6 +58,11 @@ defineProps<{
   font-size: 13px;
   transition: all 150ms ease;
   margin-bottom: 4px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
 }
 
 .sidebar-item.is-collapsed {
