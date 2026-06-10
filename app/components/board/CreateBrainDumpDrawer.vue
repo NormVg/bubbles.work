@@ -602,28 +602,29 @@ html.dark .editor-toolbar {
 .btn-generate {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: var(--text-primary);
   color: var(--bg-root);
-  border: none;
-  border-radius: 9999px;
-  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-medium);
+  padding: 6px 12px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 150ms cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .btn-generate:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .btn-generate:disabled {
-  opacity: 0.5;
+  background-color: var(--bg-surface-2);
+  color: var(--text-muted);
+  border-color: var(--border-default);
   cursor: not-allowed;
-  transform: none;
   box-shadow: none;
 }
 
