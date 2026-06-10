@@ -12,6 +12,7 @@
     </main>
     <ClientOnly>
       <BoardTaskDrawer />
+      <UiPromptModal />
     </ClientOnly>
   </div>
 </template>
@@ -21,13 +22,6 @@
   display: flex;
   height: 100vh;
   background-color: var(--bg-surface-1);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--border-default),
-    var(--border-default) 1px,
-    transparent 1px,
-    transparent 8px
-  );
   overflow: hidden;
 }
 

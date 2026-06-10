@@ -18,12 +18,14 @@
 import { computed } from 'vue'
 import confetti from 'canvas-confetti'
 import { useTaskStore, type TaskStatus, type BoardTask } from '~/stores/task.store'
+import { useUIStore } from '~/stores/ui.store'
 
 const props = defineProps<{
   context: string
 }>()
 
 const taskStore = useTaskStore()
+const uiStore = useUIStore()
 
 const columns = [
   { title: 'Open', status: 'open' as TaskStatus },
@@ -73,8 +75,8 @@ function onColumnUpdate(status: TaskStatus, tasks: BoardTask[]) {
   }
 }
 
-function onAdd(status: TaskStatus) {
-  const title = prompt('Task name:')
+async function onAdd(status: TaskStatus) {
+  const title = await uiStore.promptUser('Task Name')
   if (title) {
     taskStore.addTask(title, props.context, status)
   }

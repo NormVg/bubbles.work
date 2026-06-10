@@ -195,12 +195,12 @@ watch(task, (newTask) => {
                   { title: 'Code Block', icon: Code, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run() },
                   { title: 'Blockquote', icon: Quote, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).toggleBlockquote().run() },
                   { title: 'Divider', icon: Minus, command: ({ editor, range }: any) => editor.chain().focus().deleteRange(range).setHorizontalRule().run() },
-                  { title: 'Image', icon: ImageIcon, command: ({ editor, range }: any) => {
-                    const url = window.prompt('Image URL')
+                  { title: 'Image', icon: ImageIcon, command: async ({ editor, range }: any) => {
+                    const url = await uiStore.promptUser('Image URL', 'https://...')
                     if (url) editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
                   } },
-                  { title: 'Link', icon: LinkIcon, command: ({ editor, range }: any) => {
-                    const url = window.prompt('Link URL')
+                  { title: 'Link', icon: LinkIcon, command: async ({ editor, range }: any) => {
+                    const url = await uiStore.promptUser('Link URL', 'https://...')
                     if (url) editor.chain().focus().deleteRange(range).setLink({ href: url }).run()
                   } }
                 ].filter(item => item.title.toLowerCase().includes(query.toLowerCase()))

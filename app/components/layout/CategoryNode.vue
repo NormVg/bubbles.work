@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { ChevronRight, Plus, FolderPlus, Trash2, Circle } from '@lucide/vue'
 import { useCategoryStore, type Category } from '~/stores/category.store'
+import { useUIStore } from '~/stores/ui.store'
 
 const props = defineProps<{
   category: Category
@@ -66,16 +67,17 @@ const props = defineProps<{
 }>()
 
 const categoryStore = useCategoryStore()
+const uiStore = useUIStore()
 
-function addSubCategory() {
-  const name = prompt('Sub-category name:')
+async function addSubCategory() {
+  const name = await uiStore.promptUser('Sub-Category Name', 'Name')
   if (name) {
     categoryStore.addCategory(props.category.id, name)
   }
 }
 
-function addTask() {
-  const name = prompt('Task name:')
+async function addTask() {
+  const name = await uiStore.promptUser('Task Name', 'Name')
   if (name) {
     categoryStore.addTask(props.category.id, name)
   }

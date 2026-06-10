@@ -19,7 +19,8 @@ export function getSidebarDates() {
     
     dates.push({
       id: d.toISOString().split('T')[0],
-      label: `${dayName} ${dateNum} ${monthName}` // e.g., Thu 11 Jun
+      label: `${dayName} ${dateNum} ${monthName}`,
+      number: dateNum
     })
   }
 

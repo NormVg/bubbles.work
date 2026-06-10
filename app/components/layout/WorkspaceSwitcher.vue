@@ -43,12 +43,14 @@
 import { ref, computed } from 'vue'
 import { Briefcase, User, Globe, ChevronDown, Check, Plus } from '@lucide/vue'
 import { useWorkspaceStore } from '~/stores/workspace.store'
+import { useUIStore } from '~/stores/ui.store'
 
 defineProps<{
   isCollapsed: boolean
 }>()
 
 const workspaceStore = useWorkspaceStore()
+const uiStore = useUIStore()
 const isOpen = ref(false)
 
 const activeWorkspace = computed(() => workspaceStore.activeWorkspace)
@@ -58,8 +60,8 @@ function selectWorkspace(id: string) {
   isOpen.value = false
 }
 
-function addWorkspace() {
-  const name = prompt('Enter new workspace name:')
+async function addWorkspace() {
+  const name = await uiStore.promptUser('Workspace Name')
   if (name) {
     workspaceStore.addWorkspace(name)
     isOpen.value = false

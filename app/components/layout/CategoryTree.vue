@@ -21,12 +21,14 @@
 <script setup lang="ts">
 import { Plus } from '@lucide/vue'
 import { useCategoryStore } from '~/stores/category.store'
+import { useUIStore } from '~/stores/ui.store'
 import CategoryNode from './CategoryNode.vue'
 
 const categoryStore = useCategoryStore()
+const uiStore = useUIStore()
 
-function addRootCategory() {
-  const name = prompt('Category name:')
+async function addRootCategory() {
+  const name = await uiStore.promptUser('Category Name')
   if (name) {
     categoryStore.addCategory(null, name)
   }

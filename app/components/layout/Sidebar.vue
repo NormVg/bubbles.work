@@ -4,30 +4,27 @@
     :class="{ 'is-collapsed': uiStore.isSidebarCollapsed }"
   >
     <!-- Branding + Toggle -->
-    <div class="sidebar-header">
+    <div class="sidebar-header" :class="{ 'is-collapsed': uiStore.isSidebarCollapsed }">
+      <img src="~/assets/image.png" alt="Bubbles.work logo" class="app-logo" :class="{ 'is-collapsed': uiStore.isSidebarCollapsed }" />
+      <span class="app-title" :class="{ 'is-collapsed': uiStore.isSidebarCollapsed }">Bubbles.work</span>
       <Transition name="fade">
-        <span v-if="!uiStore.isSidebarCollapsed" class="app-title">Bubbles.work</span>
+        <button 
+          v-if="!uiStore.isSidebarCollapsed"
+          class="collapse-toggle expanded" 
+          @click="toggle" 
+          aria-label="Collapse Sidebar"
+        >
+          <PanelLeftClose :size="16" :stroke-width="1.5" />
+        </button>
+        <button 
+          v-else
+          class="collapse-toggle collapsed" 
+          @click="toggle" 
+          aria-label="Expand Sidebar"
+        >
+          <PanelLeftOpen :size="16" :stroke-width="1.5" />
+        </button>
       </Transition>
-      <button 
-        class="collapse-toggle" 
-        @click="toggle" 
-        aria-label="Toggle Sidebar"
-      >
-        <Transition name="icon-morph" mode="out-in">
-          <PanelLeftClose 
-            v-if="!uiStore.isSidebarCollapsed" 
-            key="close" 
-            :size="16" 
-            :stroke-width="1.5" 
-          />
-          <PanelLeftOpen 
-            v-else 
-            key="open" 
-            :size="16" 
-            :stroke-width="1.5" 
-          />
-        </Transition>
-      </button>
     </div>
 
     <!-- Workspace Switcher -->
@@ -64,7 +61,8 @@
           v-for="date in dynamicDates"
           :key="date.id"
           :to="`/dashboard/date/${date.id}`"
-          :icon="CalendarIcon"
+          :icon="uiStore.isSidebarCollapsed ? undefined : CalendarIcon"
+          :textIcon="uiStore.isSidebarCollapsed ? date.number : undefined"
           :label="date.label"
           :isCollapsed="uiStore.isSidebarCollapsed"
         />
@@ -167,12 +165,13 @@ function addAction(context: string) {
 
 <style scoped>
 .sidebar {
-  width: 250px;
+  width: 260px;
   height: 100vh;
   background-color: var(--bg-surface-1);
   display: flex;
   flex-direction: column;
-  transition: width 200ms cubic-bezier(0.25, 1, 0.5, 1);
+  transition: width 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -183,22 +182,53 @@ function addAction(context: string) {
 
 /* ── Header ── */
 .sidebar-header {
-  height: 48px;
-  display: flex;
-  align-items: center;
-  padding: 0 var(--space-4);
+  height: 64px;
+  position: relative;
   flex-shrink: 0;
+  transition: height 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-header.is-collapsed {
+  height: 104px;
+}
+
+.app-logo {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  left: var(--space-4);
+  top: 14px;
+  transition: all 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-logo.is-collapsed {
+  left: 12px;
+  top: 16px;
 }
 
 .app-title {
+  position: absolute;
+  left: 64px;
+  top: 22px;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.03em;
   white-space: nowrap;
   color: var(--text-primary);
+  opacity: 1;
+  visibility: visible;
+  transition: all 200ms ease;
+}
+
+.app-title.is-collapsed {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-10px);
 }
 
 .collapse-toggle {
+  position: absolute;
   background: none;
   border: none;
   cursor: pointer;
@@ -206,12 +236,22 @@ function addAction(context: string) {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-medium);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.collapse-toggle.expanded {
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-medium);
-  transition: color 120ms ease, background-color 120ms ease;
-  margin-left: auto;
-  flex-shrink: 0;
+  right: var(--space-4);
+  top: 18px;
+}
+
+.collapse-toggle.collapsed {
+  width: 32px;
+  height: 32px;
+  left: 14px;
+  top: 60px;
 }
 
 .collapse-toggle:hover {

@@ -5,7 +5,8 @@
     :class="{ 'is-collapsed': isCollapsed }"
   >
     <div class="icon-wrapper">
-      <component :is="icon" :size="16" :stroke-width="1.5" />
+      <component v-if="icon" :is="icon" :size="16" :stroke-width="1.5" />
+      <span v-else-if="textIcon" class="text-icon">{{ textIcon }}</span>
     </div>
     <Transition name="fade">
       <span v-if="!isCollapsed" class="label">{{ label }}</span>
@@ -19,7 +20,8 @@
 <script setup lang="ts">
 defineProps<{
   to: string;
-  icon: any;
+  icon?: any;
+  textIcon?: string;
   label: string;
   isCollapsed?: boolean;
 }>();
@@ -36,8 +38,16 @@ defineProps<{
   text-decoration: none;
   color: var(--text-secondary);
   font-size: 13px;
-  transition: color 100ms ease, background-color 100ms ease;
+  transition: all 150ms ease;
   margin-bottom: 4px;
+}
+
+.sidebar-item.is-collapsed {
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .sidebar-item:hover {
@@ -61,6 +71,14 @@ defineProps<{
   justify-content: center;
   width: 16px;
   flex-shrink: 0;
+}
+
+.text-icon {
+  font-size: 12px;
+  font-weight: 600;
+  color: currentColor;
+  text-align: center;
+  line-height: 1;
 }
 
 .label {
