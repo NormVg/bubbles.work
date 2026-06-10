@@ -62,12 +62,12 @@ const navigation = useNavigation()
 const topicSwitcher = useTopicSwitcher()
 
 const categoryName = computed(() => {
-  const breadcrumbs = navigation.getBreadcrumbsForCategory(categoryId.value)
+  const breadcrumbs = navigation.getBreadcrumbs(categoryId.value, 'category')
   return breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].label : 'Category'
 })
 
 const breadcrumbs = computed(() => {
-  return navigation.getBreadcrumbsForCategory(categoryId.value)
+  return navigation.getBreadcrumbs(categoryId.value, 'category')
 })
 
 const subCategories = computed(() => {
