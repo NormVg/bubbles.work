@@ -13,14 +13,6 @@
       @remove="onRemove"
       @rename="newName => $emit('renameColumn', column.id, newName)"
     />
-
-    <!-- Ghost Column for adding new topics -->
-    <button v-if="isCategoryBoard" class="ghost-column" @click="$emit('addColumn')" aria-label="Add new topic">
-      <div class="ghost-content">
-        <Plus :size="20" class="ghost-icon" />
-        <span>Add topic</span>
-      </div>
-    </button>
   </div>
 </template>
 
@@ -142,36 +134,6 @@ function onRemove(taskId: string) {
 .kanban-board.is-category-board > * {
   width: 340px;
   flex-shrink: 0;
-}
-
-.ghost-column {
-  width: 340px;
-  flex-shrink: 0;
-  min-height: 500px;
-  border-radius: var(--radius-large);
-  border: 2px dashed var(--border-default);
-  background-color: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 200ms ease;
-  color: var(--text-muted);
-}
-
-.ghost-column:hover {
-  background-color: var(--bg-surface-2);
-  border-color: var(--text-muted);
-  color: var(--text-primary);
-}
-
-.ghost-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: 500;
-  font-size: 14px;
 }
 
 @media (max-width: 768px) {

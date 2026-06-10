@@ -140,44 +140,91 @@ function handleAddSubCategory() {
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--text-primary);
   margin-top: var(--space-2);
+  letter-spacing: -0.02em;
 }
 
+/* Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 14px;
+  border-radius: var(--radius-medium);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  border: 1px solid transparent;
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface-2);
+  border-color: var(--border-default);
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-primary {
+  background-color: var(--text-primary);
+  color: var(--bg-root);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Sub-categories Pills */
 .sub-categories-list {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin-bottom: var(--space-6);
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-6);
   border-bottom: 1px solid var(--border-default);
 }
 
 .sub-category-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 8px 16px;
   background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-large);
+  border: 1px solid rgba(0,0,0,0.03);
+  border-radius: 9999px; /* Pill shape */
   text-decoration: none;
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--text-primary);
+  font-size: 14px;
   font-weight: 500;
-  transition: all 150ms ease;
+  transition: all 200ms cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+html.dark .sub-category-pill {
+  border-color: rgba(255,255,255,0.03);
 }
 
 .sub-category-pill:hover {
   background-color: var(--bg-hover);
-  color: var(--text-primary);
-  border-color: var(--text-muted);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .sub-category-pill .icon {
   color: var(--text-muted);
+  transition: color 200ms ease;
+}
+
+.sub-category-pill:hover .icon {
+  color: var(--text-primary);
 }
 
 .board-area {
