@@ -27,31 +27,22 @@
               
               <div class="ai-prompt-box">
                 <div class="ai-prompt-inner">
-                  <input 
-                    v-model="promptInstruction" 
-                    type="text" 
-                    class="ai-prompt-input" 
-                    placeholder="Dump your mind, let me manage..." 
-                    @keyup.enter="extractTasks" 
-                  />
-                  <div class="ai-prompt-toolbar">
-                    <div class="toolbar-left">
-                      <UiMicButton 
-                        @update:text="handleDictation" 
-                        @stop="handleMicStop" 
-                      />
-                    </div>
-                    <div class="toolbar-right">
-                      <button 
-                        class="btn-submit" 
-                        @click="extractTasks" 
-                        :disabled="viewState === 'drafting' || (isEditorEmpty && !promptInstruction)"
-                        title="Draft Tasks"
-                      >
-                        <Loader2 v-if="viewState === 'drafting'" class="spinner" :size="16" />
-                        <CornerDownLeft v-else :size="16" />
-                      </button>
-                    </div>
+                  <div class="toolbar-left">
+                    <UiMicButton 
+                      @update:text="handleDictation" 
+                      @stop="handleMicStop" 
+                    />
+                  </div>
+                  <div class="toolbar-right">
+                    <button 
+                      class="btn-submit" 
+                      @click="extractTasks" 
+                      :disabled="viewState === 'drafting' || isEditorEmpty"
+                      title="Draft Tasks"
+                    >
+                      <Loader2 v-if="viewState === 'drafting'" class="spinner" :size="16" />
+                      <CornerDownLeft v-else :size="16" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -143,7 +134,6 @@ type ViewState = 'input' | 'drafting' | 'review'
 const viewState = ref<ViewState>('input')
 
 const dumpText = ref('')
-const promptInstruction = ref('')
 const draftTasks = ref<any[]>([])
 const revisionText = ref('')
 const isRevising = ref(false)
@@ -167,7 +157,7 @@ watch(() => uiStore.isCreateDrawerOpen, (isOpen) => {
           Image.configure({ inline: true }),
           Link.configure({ openOnClick: false }),
           Placeholder.configure({
-            placeholder: 'Dump your mind, let me manage',
+            placeholder: 'Dump your mind, let me manage...',
           }),
           SlashCommandsExtension.configure({
             suggestion: {
@@ -301,7 +291,6 @@ function close() {
   uiStore.closeCreateDrawer()
   viewState.value = 'input'
   dumpText.value = ''
-  promptInstruction.value = ''
   if (editor) editor.commands.setContent('')
   draftTasks.value = []
   revisionText.value = ''
@@ -360,15 +349,10 @@ async function runExtraction(payload: any) {
 }
 
 async function extractTasks() {
-  if (isEditorEmpty.value && !promptInstruction.value.trim()) return
+  if (isEditorEmpty.value) return
   viewState.value = 'drafting'
   
-  let finalPrompt = editor?.getText() || dumpText.value
-  if (promptInstruction.value.trim()) {
-    finalPrompt = `Instruction: ${promptInstruction.value.trim()}\n\nContext:\n${finalPrompt}`
-  }
-  
-  const tasks = await runExtraction({ prompt: finalPrompt })
+  const tasks = await runExtraction({ prompt: editor?.getText() || dumpText.value })
   if (tasks) {
     draftTasks.value = tasks
     viewState.value = 'review'
@@ -594,29 +578,11 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   border: 1px solid var(--border-default);
   border-radius: 12px;
   display: flex;
-  flex-direction: column;
-  padding: 12px 12px 8px 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-}
-
-.ai-prompt-input {
-  border: none;
-  background: transparent;
-  width: 100%;
-  font-size: 15px;
-  color: var(--text-primary);
-  outline: none;
-  margin-bottom: 8px;
-}
-
-.ai-prompt-input::placeholder {
-  color: var(--text-muted);
-}
-
-.ai-prompt-toolbar {
-  display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .toolbar-left, .toolbar-right {
