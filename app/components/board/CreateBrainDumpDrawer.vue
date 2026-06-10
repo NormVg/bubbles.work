@@ -536,19 +536,17 @@ html.dark .drawer-content {
 }
 
 .editor-container {
-  flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
   min-width: 0;
   background-color: var(--bg-surface-2);
-  padding: 12px;
+  padding: 8px;
   border-radius: 16px;
   margin-bottom: var(--space-6);
 }
 
 .editor-inner {
-  flex: 1;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-root);
@@ -559,15 +557,15 @@ html.dark .drawer-content {
 }
 
 .tiptap-editor {
-  flex: 1;
   width: 100%;
   cursor: text;
+  max-height: 50vh;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 16px 16px 8px 16px;
 }
 
 :deep(.tiptap-inner) {
-  min-height: 300px;
+  min-height: 60px;
   color: var(--text-primary);
   line-height: 1.6;
   outline: none;
