@@ -10,9 +10,17 @@
             {{ tag.label }}
           </span>
         </div>
-        <button class="delete-btn" @click.stop="taskStore.removeTask(task.id)" title="Delete Task">
-          <Trash2 :size="14" :stroke-width="1.5" />
-        </button>
+        
+        <div class="card-actions">
+          <BoardContextPopover 
+            :current-context="task.scheduledFor" 
+            @update:context="(ctx) => taskStore.updateTaskField(task.id, 'scheduledFor', ctx)"
+          />
+          <button class="delete-btn" @click.stop="taskStore.removeTask(task.id)" title="Delete Task">
+            <Trash2 :size="14" :stroke-width="1.5" />
+          </button>
+        </div>
+        
         <div class="drag-handle">
           <GripVertical :size="14" :stroke-width="1.5" />
         </div>
@@ -25,8 +33,13 @@
     </div>
     
     <!-- Bottom Row (Dynamic Properties) -->
-    <div class="card-footer" v-if="visibleProps.length > 0 || task.categoryLabel">
+    <div class="card-footer" v-if="visibleProps.length > 0 || task.categoryLabel || task.scheduledFor">
       <div class="footer-props-list">
+        <div v-if="task.scheduledFor" class="category-label schedule-label">
+          <CalendarIcon :size="12" :stroke-width="1.5" />
+          <span>{{ formatContextLabel(task.scheduledFor) }}</span>
+        </div>
+
         <div v-if="task.categoryLabel" class="category-label">
           <Database :size="12" :stroke-width="1.5" />
           <span>{{ task.categoryLabel }}</span>
@@ -54,7 +67,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { GripVertical, User, Database, Signal, Trash2 } from '@lucide/vue'
+import { GripVertical, User, Database, Signal, Trash2, Calendar as CalendarIcon } from '@lucide/vue'
+import { formatContextLabel } from '~/utils/date.utils'
 import type { BoardTask } from '~/stores/task.store'
 import { useTaskStore } from '~/stores/task.store'
 import { useUIStore } from '~/stores/ui.store'
@@ -173,27 +187,40 @@ html.dark .tag-info { background-color: rgba(45, 128, 217, 0.14); color: #93c5fd
 html.dark .tag-primary { background-color: rgba(139, 92, 246, 0.14); color: #c4b5fd; }
 html.dark .tag-warning { background-color: rgba(239, 159, 39, 0.14); color: #fcd34d; }
 
+.card-actions {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
 .drag-handle, .delete-btn {
   color: var(--text-muted);
   cursor: grab;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 150ms ease, color 150ms ease, background-color 150ms ease;
+  transition: color 150ms ease, background-color 150ms ease;
   padding: 4px;
   border-radius: var(--radius-micro);
   background: transparent;
   border: none;
 }
 
+.drag-handle { opacity: 0; transition: opacity 150ms ease; }
+
+.kanban-card:hover .card-actions,
+.kanban-card:hover .drag-handle {
+  opacity: 1;
+}
+
 .delete-btn {
   cursor: pointer;
 }
 
-.kanban-card:hover .drag-handle,
-.kanban-card:hover .delete-btn {
-  opacity: 1;
+.delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .drag-handle:hover {
@@ -239,12 +266,24 @@ html.dark .tag-warning { background-color: rgba(239, 159, 39, 0.14); color: #fcd
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-surface-2);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   padding: 2px 6px;
-  border-radius: var(--radius-micro);
+  border-radius: var(--radius-small);
+  white-space: nowrap;
+}
+
+.schedule-label {
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.schedule-label :deep(svg) {
+  color: var(--primary);
 }
 
 .custom-prop-badge {

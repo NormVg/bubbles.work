@@ -57,6 +57,21 @@
                 </div>
               </div>
 
+              <!-- Schedule (Context) -->
+              <div class="prop-row">
+                <div class="prop-label">
+                  <Calendar :size="14" class="prop-icon" />
+                  <span>Schedule</span>
+                </div>
+                <div class="prop-value" style="display: flex; align-items: center; gap: 8px;">
+                  <span class="prop-text-readonly" style="text-transform: capitalize;">{{ formatContextLabel(task.scheduledFor || '') }}</span>
+                  <BoardContextPopover 
+                    :current-context="task.scheduledFor" 
+                    @update:context="(ctx) => updateField('scheduledFor', ctx)"
+                  />
+                </div>
+              </div>
+
               <!-- Dynamic Properties -->
               <div class="prop-row group" v-for="prop in taskStore.propertiesSchema" :key="prop.id">
                 <div class="prop-label">
@@ -77,12 +92,12 @@
                   </select>
                   
                   <!-- Date Input -->
-                  <input
+                  <UiDatePickerPopover
                     v-else-if="prop.type === 'date'"
-                    type="date"
-                    :value="task.customProperties?.[prop.id] || ''"
-                    @input="(e) => updateCustomProp(prop.id, (e.target as HTMLInputElement).value)"
-                    class="prop-input"
+                    :model-value="task.customProperties?.[prop.id]"
+                    :include-time="true"
+                    :block-past="false"
+                    @update:model-value="(val) => updateCustomProp(prop.id, val)"
                   />
                   
                   <!-- Text Input -->
@@ -168,6 +183,7 @@ import Link from '@tiptap/extension-link'
 import tippy from 'tippy.js'
 import SlashMenuList from './SlashMenuList.vue'
 import { SlashCommandsExtension } from '~/utils/SlashCommands'
+import { formatContextLabel } from '~/utils/date.utils'
 
 const uiStore = useUIStore()
 const taskStore = useTaskStore()
@@ -350,6 +366,19 @@ function formatDate(isoString: string) {
   if (!isoString) return ''
   const date = new Date(isoString)
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function getLocalDatetime(isoStr: string) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return ''
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+}
+
+function parseLocalDatetime(localStr: string) {
+  if (!localStr) return ''
+  return new Date(localStr).toISOString()
 }
 
 function deleteTask() {

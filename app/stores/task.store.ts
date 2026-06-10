@@ -39,7 +39,8 @@ export interface BoardTask {
   // New dynamic property system
   customProperties: Record<string, any>
   
-  context: string
+  context: string // Topic ID
+  scheduledFor?: string | null // e.g. 'today', 'tomorrow', 'date-2026-06-15'
   createdAt: string
   order: number
   description?: string
@@ -70,32 +71,32 @@ export const useTaskStore = defineStore('tasks', {
       { 
         id: 'bt-1', identifier: '#T-235', title: 'Fix USDC payout issue for logged in users in dashboard', 
         status: 'open', customProperties: { 'prop-priority': 'opt-h' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional' 
+        context: 'task-1', scheduledFor: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional' 
       },
       { 
         id: 'bt-2', identifier: '#T-234', title: 'Allow users to export tables as CSV', 
         status: 'open', customProperties: { 'prop-priority': 'opt-m' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 1, workspaceId: 'professional'
+        context: 'task-1', scheduledFor: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 1, workspaceId: 'professional'
       },
       { 
         id: 'bt-3', identifier: '#T-236', title: 'Add Darkmode support', 
         status: 'open', customProperties: { 'prop-priority': 'opt-m' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 2, workspaceId: 'professional'
+        context: 'task-1', scheduledFor: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 2, workspaceId: 'professional'
       },
       { 
         id: 'bt-4', identifier: '#T-237', title: 'Write API documentation', 
         status: 'live', customProperties: { 'prop-priority': 'opt-l' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
+        context: 'task-2', scheduledFor: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
       },
       { 
         id: 'bt-5', identifier: '#T-238', title: 'Review pull requests', 
         status: 'done', customProperties: { 'prop-priority': 'opt-h' },
-        context: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
+        context: 'task-2', scheduledFor: 'today', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
       },
       { 
         id: 'bt-6', identifier: '#T-239', title: 'Deploy staging build', 
         status: 'open', customProperties: { 'prop-priority': 'opt-h' },
-        context: 'tomorrow', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
+        context: 'task-3', scheduledFor: 'tomorrow', createdAt: '2026-06-10T00:00:00.000Z', order: 0, workspaceId: 'professional'
       },
     ] as BoardTask[]
   }),
@@ -103,20 +104,21 @@ export const useTaskStore = defineStore('tasks', {
     getTasksByContext: (state) => {
       return (context: string) => {
         const wsStore = useWorkspaceStore()
-        return state.tasks.filter(t => 
-          t.context === context && 
-          (wsStore.activeWorkspaceId === 'all' || t.workspaceId === wsStore.activeWorkspaceId || !t.workspaceId)
-        )
+        const isDateContext = ['today', 'tomorrow', 'someday'].includes(context) || context.startsWith('date-')
+        return state.tasks.filter(t => {
+          const match = isDateContext ? t.scheduledFor === context : t.context === context
+          return match && (wsStore.activeWorkspaceId === 'all' || t.workspaceId === wsStore.activeWorkspaceId || !t.workspaceId)
+        })
       }
     },
     getTasksByStatus: (state) => {
       return (context: string, status: TaskStatus) => {
         const wsStore = useWorkspaceStore()
-        return state.tasks.filter(t => 
-          t.context === context && 
-          t.status === status &&
-          (wsStore.activeWorkspaceId === 'all' || t.workspaceId === wsStore.activeWorkspaceId || !t.workspaceId)
-        )
+        const isDateContext = ['today', 'tomorrow', 'someday'].includes(context) || context.startsWith('date-')
+        return state.tasks.filter(t => {
+          const match = isDateContext ? t.scheduledFor === context : t.context === context
+          return match && t.status === status && (wsStore.activeWorkspaceId === 'all' || t.workspaceId === wsStore.activeWorkspaceId || !t.workspaceId)
+        })
       }
     }
   },
@@ -160,11 +162,20 @@ export const useTaskStore = defineStore('tasks', {
         }
       })
     },
-    addTask(title: string, context: string, status: TaskStatus = 'open', workspaceId?: string) {
+    addTask(title: string, context: string, status: TaskStatus = 'open', workspaceId?: string, scheduledFor?: string | null) {
       const wsStore = useWorkspaceStore()
       const assignedWorkspaceId = workspaceId || (wsStore.activeWorkspaceId !== 'all' ? wsStore.activeWorkspaceId : 'personal')
+      const isDateContext = ['today', 'tomorrow', 'someday'].includes(context) || context.startsWith('date-')
       
-      const statusTasks = this.tasks.filter(t => t.context === context && t.status === status)
+      let actualContext = context
+      let actualScheduledFor = scheduledFor || null
+      
+      if (isDateContext) {
+        actualContext = 'task-1'
+        if (!actualScheduledFor) actualScheduledFor = context
+      }
+      
+      const statusTasks = this.tasks.filter(t => (isDateContext ? t.scheduledFor === actualScheduledFor : t.context === actualContext) && t.status === status)
       const maxOrder = statusTasks.length > 0 ? Math.max(...statusTasks.map(t => t.order)) : -1
       
       this.tasks.push({
@@ -173,7 +184,8 @@ export const useTaskStore = defineStore('tasks', {
         title,
         status,
         customProperties: { 'prop-priority': 'opt-m' },
-        context,
+        context: actualContext,
+        scheduledFor: actualScheduledFor,
         createdAt: new Date().toISOString(),
         order: maxOrder + 1,
         workspaceId: assignedWorkspaceId
@@ -189,12 +201,17 @@ export const useTaskStore = defineStore('tasks', {
       }
     },
     updateTaskOrders(context: string, status: TaskStatus, orderedTasks: BoardTask[]) {
+      const isDateContext = ['today', 'tomorrow', 'someday'].includes(context) || context.startsWith('date-')
       orderedTasks.forEach((task, index) => {
         const t = this.tasks.find(x => x.id === task.id)
         if (t) {
           t.order = index
           t.status = status
-          t.context = context
+          if (isDateContext) {
+            t.scheduledFor = context
+          } else {
+            t.context = context
+          }
         }
       })
     },

@@ -26,3 +26,29 @@ export function getSidebarDates() {
 
   return dates
 }
+
+export function formatContextLabel(context: string): string {
+  if (!context) return 'Someday'
+  if (context === 'today') return 'Today'
+  if (context === 'tomorrow') return 'Tomorrow'
+  if (context === 'someday') return 'Someday'
+  
+  if (context.startsWith('date-')) {
+    const isoDate = context.replace('date-', '')
+    const d = new Date(isoDate)
+    
+    // Check if it's a valid date
+    if (isNaN(d.getTime())) return context
+    
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    
+    const dayName = days[d.getDay()]
+    const dateNum = d.getDate().toString().padStart(2, '0')
+    const monthName = months[d.getMonth()]
+    
+    return `${dayName} ${dateNum} ${monthName}`
+  }
+  
+  return context
+}

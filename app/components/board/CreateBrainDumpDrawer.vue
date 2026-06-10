@@ -132,8 +132,21 @@
                     
                     <div v-if="task.customProperties && task.customProperties.length > 0" class="draft-custom-props">
                       <div v-for="(cp, i) in task.customProperties" :key="i" class="draft-custom-prop">
-                        <span class="cp-name">{{ cp.name }}:</span>
-                        <span class="cp-value">{{ cp.value }}</span>
+                        <span class="cp-name">{{ getDraftPropSchema(cp.name)?.name || cp.name }}:</span>
+                        <UiDatePickerPopover
+                          v-if="getDraftPropSchema(cp.name)?.type === 'date'"
+                          :model-value="cp.value"
+                          :include-time="true"
+                          :block-past="false"
+                          placeholder="Select date"
+                          @update:model-value="(val) => cp.value = val"
+                        />
+                        <input 
+                          v-else
+                          type="text"
+                          class="meta-input"
+                          v-model="cp.value"
+                        />
                       </div>
                     </div>
                   </div>
@@ -493,10 +506,32 @@ async function reviseDraft() {
     revisionPrompt: revisionText.value
   })
   
+  // Note: runExtraction directly updates draftTasks.value internally if it succeeds, but it also returns tasks
   if (tasks) {
     revisionText.value = ''
   }
+  
   isRevising.value = false
+}
+
+function getDraftPropSchema(cpName: string) {
+  const lower = cpName.toLowerCase()
+  return taskStore.propertiesSchema.find(x => 
+    x.name.toLowerCase() === lower || x.id.toLowerCase() === lower
+  )
+}
+
+function getLocalDatetime(isoStr: string) {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return ''
+  const tzOffset = d.getTimezoneOffset() * 60000
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16)
+}
+
+function parseLocalDatetime(localStr: string) {
+  if (!localStr) return ''
+  return new Date(localStr).toISOString()
 }
 
 /** Find or create a category + topic, return the topic task ID to use as context */
@@ -552,7 +587,22 @@ function confirmAndAdd() {
     customProps.forEach(cp => {
       let propId = propIdMap[cp.name.toLowerCase()]
       if (!propId) {
-        const existing = taskStore.propertiesSchema.find(x => x.name.toLowerCase() === cp.name.toLowerCase())
+        let existing = taskStore.propertiesSchema.find(x => 
+          x.name.toLowerCase() === cp.name.toLowerCase() || 
+          x.id.toLowerCase() === cp.name.toLowerCase()
+        )
+        
+        // Force inject prop-date if it was lost from local storage
+        if (!existing && (cp.name.toLowerCase() === 'prop-date' || cp.name.toLowerCase() === 'on date')) {
+          taskStore.propertiesSchema.push({
+            id: 'prop-date',
+            name: 'On Date',
+            type: 'date',
+            color: '#3b82f6'
+          })
+          existing = taskStore.propertiesSchema.find(x => x.id === 'prop-date')
+        }
+        
         if (existing) propId = existing.id
       }
       
@@ -601,14 +651,15 @@ function confirmAndAdd() {
     }
 
     // ─── CREATE new task ───
-    let taskContext = t.context || 'someday'
+    let taskContext = 'task-1' // default topic
+    let scheduledFor: string | null = t.context || 'someday'
     
     if (t.categoryName) {
       const topicId = resolveTopicId(t.categoryName, t.topicName, t.workspaceId)
       if (topicId) taskContext = topicId
     }
 
-    taskStore.addTask(t.title, taskContext, 'open', t.workspaceId)
+    taskStore.addTask(t.title, taskContext, 'open', t.workspaceId, scheduledFor)
     const lastTask = taskStore.tasks[taskStore.tasks.length - 1]
     if (t.priority) taskStore.updateCustomProperty(lastTask.id, 'prop-priority', t.priority)
     if (t.description) taskStore.updateTaskField(lastTask.id, 'description', `<p>${t.description}</p>`)
@@ -981,22 +1032,45 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
 .draft-custom-props {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .draft-custom-prop {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  background-color: var(--bg-surface-2);
-  padding: 3px 8px;
-  border-radius: 4px;
+  gap: 6px;
 }
 
 .cp-name {
-  color: var(--text-muted);
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-muted);
+}
+
+.meta-input {
+  appearance: none;
+  -webkit-appearance: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background-color: var(--bg-surface-2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  outline: none;
+  transition: all 150ms ease;
+  height: 26px;
+  font-family: inherit;
+}
+
+.meta-input:hover {
+  border-color: var(--border-strong);
+  background-color: var(--border-default);
+}
+
+.meta-input:focus {
+  border-color: var(--text-primary);
 }
 
 .cp-value {
