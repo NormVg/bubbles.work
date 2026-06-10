@@ -42,7 +42,9 @@ export default defineEventHandler(async (event) => {
   }
 
   if (categoryContext && categoryContext.length > 0) {
-    aiPrompt += `\n\nExisting Categories and Topics (this is the user's project organization):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nIMPORTANT: Categories are like project folders (e.g. "Design Assets", "Project Alpha"). Topics are sub-sections within a category (e.g. "Brand", "Sprint planning"). You SHOULD assign tasks to matching categories and topics when they clearly fit. If no existing category matches, you can propose a new categoryName. If no topic matches, you can propose a new topicName. Only leave categoryName empty if the task truly doesn't belong to any project/category.`
+    aiPrompt += `\n\nExisting Categories and Topics (this is the user's project organization):\n"""\n${JSON.stringify(categoryContext, null, 2)}\n"""\n\nCRITICAL: Every task MUST have a categoryName and topicName. Categories are project folders (e.g. "Design Assets", "Project Alpha"). Topics are sub-sections within a category (e.g. "Brand", "Sprint planning"). Assign tasks to existing categories/topics when they fit. If no existing one matches, propose a new one. NEVER leave categoryName or topicName empty.`
+  } else {
+    aiPrompt += `\n\nCRITICAL: Every task MUST have a categoryName and topicName. categoryName is a project or area (e.g. "Health", "Work", "Side Projects"). topicName is a sub-section (e.g. "Fitness", "Frontend", "Ideas"). Propose appropriate names based on the task content. NEVER leave them empty.`
   }
 
   if (propertiesSchema && propertiesSchema.length > 0) {
@@ -57,7 +59,7 @@ export default defineEventHandler(async (event) => {
     aiPrompt += `\n\nExisting Tasks on the Board:\n"""\n${JSON.stringify(existingTasks, null, 2)}\n"""\n\nIMPORTANT ABOUT UPDATES: Almost always use "action": "create". Only use "action": "update" if the user says words like "change", "modify", "update", "rename" referring to a SPECIFIC existing task by name. If the user is just adding new things, ALWAYS use "create" even if a similar task already exists.`
   }
 
-  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [],\n  "tasks": [\n    {\n      "action": "create",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Design Assets",\n      "topicName": "Brand",\n      "priority": "opt-h",\n      "context": "today",\n      "description": "Optional description",\n      "customProperties": [\n        { "name": "On Date", "value": "2026-06-15" }\n      ]\n    }\n  ]\n}`
+  aiPrompt += `\n\nIMPORTANT: You must return ONLY raw valid JSON matching the requested schema. Do not include markdown code blocks, conversational text, or explanations. Just the JSON object.\n\nExpected JSON format:\n{\n  "newProperties": [],\n  "tasks": [\n    {\n      "action": "create",\n      "title": "Task title",\n      "workspaceId": "personal",\n      "categoryName": "Health",\n      "topicName": "Fitness",\n      "priority": "opt-m",\n      "context": "someday",\n      "description": "Optional description",\n      "customProperties": []\n    }\n  ]\n}`
 
   try {
     const result = await generateObject({
@@ -72,10 +74,10 @@ export default defineEventHandler(async (event) => {
           taskId: z.string().optional().describe('Only required if action is update. Must be an exact id from the existing tasks list.'),
           title: z.string().describe('A concise, actionable title for the task.'),
           workspaceId: z.string().describe('The workspace id. Use personal for personal life tasks, professional for work tasks.'),
-          categoryName: z.string().optional().describe('A project/category name. Use an existing one if it fits, or propose a new one. Leave empty only if the task is a standalone item.'),
-          topicName: z.string().optional().describe('A sub-section within the category. Use an existing topic if it fits, or propose a new one.'),
+          categoryName: z.string().describe('REQUIRED. A project or area name for this task (e.g. Health, Work, Side Projects). Always provide one.'),
+          topicName: z.string().describe('REQUIRED. A sub-section within the category (e.g. Fitness, Frontend, Ideas). Always provide one.'),
           priority: z.enum(['opt-h', 'opt-m', 'opt-l']).describe('opt-h = High, opt-m = Medium, opt-l = Low. Pick based on urgency.'),
-          context: z.enum(['today', 'tomorrow', 'someday']).describe('When should this be done? Use today for urgent/immediate, tomorrow for next day, someday for no specific deadline. Pay attention to temporal cues in the input.'),
+          context: z.enum(['today', 'tomorrow', 'someday']).describe('DEFAULT is someday. Only use today if the user explicitly says today/now/urgent/ASAP. Only use tomorrow if user says tomorrow. Otherwise always use someday.'),
           description: z.string().optional().describe('Additional context or details about the task.'),
           customProperties: z.array(z.object({
             name: z.string().describe('The name of the property. Must match an existing property name or one defined in newProperties.'),

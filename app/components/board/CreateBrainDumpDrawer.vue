@@ -595,7 +595,7 @@ function confirmAndAdd() {
     }
 
     // ─── CREATE new task ───
-    let taskContext = t.context || 'today'
+    let taskContext = t.context || 'someday'
     
     if (t.categoryName) {
       const topicId = resolveTopicId(t.categoryName, t.topicName)
