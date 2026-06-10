@@ -18,6 +18,7 @@
           <div class="drawer-body">
             <!-- INPUT STAGE -->
             <div v-show="viewState === 'input' || viewState === 'drafting'" class="input-stage">
+              <h1 class="hero-title">New Draft</h1>
               <p class="description">
                 Jot down your thoughts, paste a conversation, or dictate via mic. AI will structure and categorize tasks for you.
               </p>
@@ -439,7 +440,7 @@ function confirmAndAdd() {
 }
 
 .drawer-content {
-  width: 600px;
+  width: 720px;
   max-width: 100vw;
   height: 100vh;
   background-color: var(--bg-root);
@@ -457,15 +458,18 @@ html.dark .drawer-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) var(--space-6);
-  min-height: 56px;
+  padding: var(--space-3) var(--space-6);
+  min-height: 48px;
   background-color: transparent;
 }
 
 .drawer-title {
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--text-primary);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  background-color: var(--bg-surface-2);
+  padding: 2px 8px;
+  border-radius: var(--radius-small);
 }
 
 .header-actions {
@@ -494,7 +498,7 @@ html.dark .drawer-content {
 .drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-2) var(--space-6) var(--space-16) var(--space-6);
+  padding: var(--space-2) var(--space-12) var(--space-16) var(--space-12);
   display: flex;
   flex-direction: column;
 }
@@ -506,10 +510,19 @@ html.dark .drawer-content {
   flex: 1;
 }
 
+.hero-title {
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-2);
+}
+
 .description {
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin-bottom: var(--space-6);
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-bottom: var(--space-8);
   line-height: 1.5;
 }
 
@@ -532,7 +545,7 @@ html.dark .drawer-content {
   color: var(--text-primary);
   line-height: 1.6;
   outline: none;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 :deep(.tiptap-inner p.is-editor-empty:first-child::before) {
@@ -541,7 +554,7 @@ html.dark .drawer-content {
   float: left;
   height: 0;
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 :deep(.tiptap-inner p) { margin-bottom: 0.75em; }
@@ -560,13 +573,13 @@ html.dark :deep(.tiptap-inner code) { color: #fca5a5; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) var(--space-6);
-  margin: 0 -24px -64px -24px;
-  background-color: var(--bg-surface-1);
+  padding: var(--space-4) var(--space-12);
+  margin: 0 -48px -64px -48px;
+  background-color: var(--bg-root);
   border-top: 1px solid var(--border-default);
   z-index: 10;
   position: sticky;
-  bottom: 0;
+  bottom: -64px; /* Pull it down into the padding area */
 }
 
 .toolbar-left, .toolbar-right {
