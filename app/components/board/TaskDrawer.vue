@@ -31,6 +31,17 @@
 
             <!-- Structured Props (Notion Style) -->
             <div class="props-section">
+              <!-- Created At (Read-Only) -->
+              <div class="prop-row">
+                <div class="prop-label">
+                  <Calendar :size="14" class="prop-icon" />
+                  <span>Created</span>
+                </div>
+                <div class="prop-value">
+                  <span class="prop-text-readonly">{{ formatDate(task.createdAt) }}</span>
+                </div>
+              </div>
+
               <!-- Hardcoded Status (Core Logic) -->
               <div class="prop-row">
                 <div class="prop-label">
@@ -64,6 +75,15 @@
                     <option value="">Empty</option>
                     <option v-for="opt in prop.options" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
                   </select>
+                  
+                  <!-- Date Input -->
+                  <input
+                    v-else-if="prop.type === 'date'"
+                    type="date"
+                    :value="task.customProperties?.[prop.id] || ''"
+                    @input="(e) => updateCustomProp(prop.id, (e.target as HTMLInputElement).value)"
+                    class="prop-input"
+                  />
                   
                   <!-- Text Input -->
                   <input 
@@ -326,6 +346,12 @@ function close() {
   isAddingProp.value = false
 }
 
+function formatDate(isoString: string) {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 function deleteTask() {
   if (task.value) {
     const id = task.value.id
@@ -582,6 +608,13 @@ html.dark .prop-row:hover {
 .prop-select:focus {
   border-color: var(--border-strong);
   background-color: var(--bg-root);
+}
+
+.prop-text-readonly {
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 4px 8px;
+  font-weight: 400;
 }
 
 .type-select {

@@ -56,6 +56,12 @@ export const useTaskStore = defineStore('tasks', {
           { id: 'opt-m', label: 'Medium', color: '#EF9F27' },
           { id: 'opt-l', label: 'Low', color: '#888888' },
         ]
+      },
+      {
+        id: 'prop-date',
+        name: 'On Date',
+        type: 'date',
+        color: '#3b82f6'
       }
     ] as PropertySchema[],
     tasks: [
@@ -119,7 +125,9 @@ export const useTaskStore = defineStore('tasks', {
       if (prop && prop.options) {
         const id = 'opt-' + Date.now()
         prop.options.push({ id, label })
+        return id
       }
+      return null
     },
     removePropertySchema(id: string) {
       this.propertiesSchema = this.propertiesSchema.filter(p => p.id !== id)

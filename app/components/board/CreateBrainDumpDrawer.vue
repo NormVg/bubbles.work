@@ -51,26 +51,44 @@
             <!-- REVIEW STAGE -->
             <div v-if="viewState === 'review'" class="review-stage">
               <div class="review-header">
-                <h3>Drafted Tasks</h3>
-                <p>Review the tasks below. You can ask the AI to revise them or confirm to add them to your board.</p>
+                <h3>Review Draft</h3>
+                <p>The AI extracted these tasks from your input. Review and edit before adding.</p>
               </div>
+              
+              <div class="drafts-container">
+                <!-- New Properties Alert -->
+                <div v-if="draftProperties.length > 0" class="new-props-alert">
+                  <div class="new-props-title">New Properties Proposed</div>
+                  <div class="new-props-list">
+                    <span v-for="(prop, i) in draftProperties" :key="i" class="new-prop-badge">
+                      {{ prop.name }} ({{ prop.type }})
+                    </span>
+                  </div>
+                </div>
 
-              <div class="draft-list">
-                <div v-for="(task, index) in draftTasks" :key="index" class="draft-card">
-                  <div class="draft-card-header">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <span v-if="task.action === 'update'" class="update-badge">UPDATE</span>
-                      <span class="draft-title">{{ task.title }}</span>
+                <div class="draft-list">
+                  <div v-for="(task, index) in draftTasks" :key="index" class="draft-card">
+                    <div class="draft-card-header">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span v-if="task.action === 'update'" class="update-badge">UPDATE</span>
+                        <span class="draft-title">{{ task.title }}</span>
+                      </div>
+                      <span class="draft-priority" :class="'prio-' + task.priority">{{ formatPriority(task.priority) }}</span>
                     </div>
-                    <span class="draft-priority" :class="'prio-' + task.priority">{{ formatPriority(task.priority) }}</span>
-                  </div>
-                  <div class="draft-meta">
-                    <div class="meta-pill"><FolderTree :size="12" /><span>{{ task.categoryName || 'Inbox' }}</span></div>
-                    <div class="meta-pill"><Columns :size="12" /><span>{{ task.topicName || 'To Do' }}</span></div>
-                  </div>
-                  <p v-if="task.description" class="draft-desc">{{ task.description }}</p>
-                  <div class="draft-footer">
-                    <span class="draft-context">Context: {{ task.context }}</span>
+                    <div class="draft-meta">
+                      <div class="meta-pill"><FolderTree :size="12" /><span>{{ task.categoryName || 'Inbox' }}</span></div>
+                      <div class="meta-pill"><Columns :size="12" /><span>{{ task.topicName || 'To Do' }}</span></div>
+                    </div>
+                    <p v-if="task.description" class="draft-desc">{{ task.description }}</p>
+                    <div v-if="task.customProperties && task.customProperties.length > 0" class="draft-custom-props">
+                      <div v-for="(cp, i) in task.customProperties" :key="i" class="draft-custom-prop">
+                        <span class="cp-name">{{ cp.name }}:</span>
+                        <span class="cp-value">{{ cp.value }}</span>
+                      </div>
+                    </div>
+                    <div class="draft-footer">
+                      <span class="draft-context">Context: {{ task.context }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -138,7 +156,9 @@ const viewState = ref<ViewState>('input')
 
 const dumpText = ref('')
 const draftTasks = ref<any[]>([])
+const draftProperties = ref<any[]>([])
 const revisionText = ref('')
+const isRecording = ref(false)
 const isRevising = ref(false)
 const error = ref('')
 
@@ -147,7 +167,6 @@ let editor: Editor | null = null
 
 const isEditorEmpty = computed(() => {
   if (!editor) return true
-  // Check if editor only contains an empty paragraph or nothing
   return editor.isEmpty
 })
 
@@ -322,6 +341,7 @@ function close() {
   dumpText.value = ''
   if (editor) editor.commands.setContent('')
   draftTasks.value = []
+  draftProperties.value = []
   revisionText.value = ''
   error.value = ''
 }
@@ -365,6 +385,8 @@ async function runExtraction(payload: any) {
         ...payload,
         categoryContext: getCategoryContext(),
         existingTasks: getExistingTasks(),
+        propertiesSchema: taskStore.propertiesSchema,
+        currentDateTime: new Date().toISOString(),
         ollamaApiKey: settingsStore.ollamaApiKey,
         aiModel: settingsStore.aiModel
       })
@@ -377,6 +399,8 @@ async function runExtraction(payload: any) {
 
     const data = await res.json()
     if (data.tasks && Array.isArray(data.tasks)) {
+      draftTasks.value = data.tasks
+      draftProperties.value = data.newProperties || []
       return data.tasks
     } else {
       throw new Error('Invalid response format from AI')
@@ -394,7 +418,6 @@ async function extractTasks() {
   
   const tasks = await runExtraction({ prompt: editor?.getText() || dumpText.value })
   if (tasks) {
-    draftTasks.value = tasks
     viewState.value = 'review'
   } else {
     viewState.value = 'input'
@@ -411,7 +434,6 @@ async function reviseDraft() {
   })
   
   if (tasks) {
-    draftTasks.value = tasks
     revisionText.value = ''
   }
   isRevising.value = false
@@ -419,6 +441,48 @@ async function reviseDraft() {
 
 function confirmAndAdd() {
   if (!draftTasks.value.length) return
+  
+  // 1. Create any new properties globally
+  const propIdMap: Record<string, string> = {}
+  draftProperties.value.forEach(p => {
+    const existing = taskStore.propertiesSchema.find(x => x.name.toLowerCase() === p.name.toLowerCase())
+    if (!existing) {
+      const newId = taskStore.addPropertySchema(p.name, p.type)
+      propIdMap[p.name.toLowerCase()] = newId
+    } else {
+      propIdMap[p.name.toLowerCase()] = existing.id
+    }
+  })
+
+  // Helper to process custom properties for a task
+  const applyCustomProperties = (taskId: string, customProps: any[]) => {
+    if (!customProps || !customProps.length) return
+    customProps.forEach(cp => {
+      let propId = propIdMap[cp.name.toLowerCase()]
+      if (!propId) {
+        const existing = taskStore.propertiesSchema.find(x => x.name.toLowerCase() === cp.name.toLowerCase())
+        if (existing) propId = existing.id
+      }
+      
+      if (propId) {
+        const schema = taskStore.propertiesSchema.find(x => x.id === propId)
+        if (schema && schema.type === 'select') {
+          // Check if option exists
+          const existingOpt = schema.options?.find(o => o.label.toLowerCase() === String(cp.value).toLowerCase())
+          if (existingOpt) {
+            taskStore.updateCustomProperty(taskId, propId, existingOpt.id)
+          } else {
+            const newOptId = taskStore.addPropertyOption(propId, String(cp.value))
+            if (newOptId) {
+              taskStore.updateCustomProperty(taskId, propId, newOptId)
+            }
+          }
+        } else {
+          taskStore.updateCustomProperty(taskId, propId, cp.value)
+        }
+      }
+    })
+  }
   
   draftTasks.value.forEach(t => {
     if (t.action === 'update' && t.taskId) {
@@ -431,6 +495,7 @@ function confirmAndAdd() {
         if (t.context) {
            taskStore.updateTaskField(t.taskId, 'context', t.context)
         }
+        applyCustomProperties(t.taskId, t.customProperties)
       }
       return
     }
@@ -472,6 +537,7 @@ function confirmAndAdd() {
     const lastTask = taskStore.tasks[taskStore.tasks.length - 1]
     if (t.priority) taskStore.updateCustomProperty(lastTask.id, 'prop-priority', t.priority)
     if (t.description) taskStore.updateTaskField(lastTask.id, 'description', `<p>${t.description}</p>`)
+    applyCustomProperties(lastTask.id, t.customProperties)
   })
   
   close()
