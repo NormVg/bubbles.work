@@ -10,12 +10,13 @@ export function useSpeechToText() {
   const settingsStore = useSettingsStore()
   
   let nativeRecognition: any = null
-  let sarvamSocket: WebSocket | null = null
+  let sarvamRecorder: MediaRecorder | null = null
   let mediaStream: MediaStream | null = null
   let audioContext: AudioContext | null = null
-  let scriptProcessor: ScriptProcessorNode | null = null
   let analyser: AnalyserNode | null = null
   let animationFrameId: number | null = null
+  let chunkTimer: any = null
+  let transcriptChunks: string[] = []
 
   function setupVolumeMeter(stream: MediaStream) {
     if (!audioContext) {
@@ -70,20 +71,16 @@ export function useSpeechToText() {
     }
     
     try {
-      if (sarvamSocket && sarvamSocket.readyState === WebSocket.OPEN) {
-        sarvamSocket.send(JSON.stringify({ type: 'flush' }))
-        setTimeout(() => {
-          if (sarvamSocket) {
-            sarvamSocket.close()
-            sarvamSocket = null
-          }
-        }, 500)
-      } else if (sarvamSocket) {
-        sarvamSocket.close()
-        sarvamSocket = null
+      if (chunkTimer) {
+        clearTimeout(chunkTimer)
+        chunkTimer = null
       }
+      if (sarvamRecorder && sarvamRecorder.state !== 'inactive') {
+        sarvamRecorder.stop()
+      }
+      sarvamRecorder = null
     } catch (e) {
-      console.warn('Error closing sarvam socket', e)
+      console.warn('Error stopping sarvam recorder', e)
     }
 
     if (animationFrameId) {
@@ -96,10 +93,7 @@ export function useSpeechToText() {
       analyser = null
     }
 
-    if (scriptProcessor) {
-      scriptProcessor.disconnect()
-      scriptProcessor = null
-    }
+
 
     if (audioContext) {
       audioContext.close()
@@ -167,95 +161,91 @@ export function useSpeechToText() {
   async function startSarvamRecording() {
     if (!settingsStore.sarvamApiKey) return
 
-    // Request microphone access
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    console.log('[Sarvam] Microphone access granted')
+    console.log('[Sarvam] Microphone access granted for REST chunking')
+    setupVolumeMeter(mediaStream)
     
-    // Connect via Nitro proxy — browsers can't set custom WS headers,
-    // and Sarvam requires Api-Subscription-Key as a header
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/sarvam-stream?key=${encodeURIComponent(settingsStore.sarvamApiKey)}`
-    console.log('[Sarvam] Connecting via proxy...')
-    
-    sarvamSocket = new WebSocket(wsUrl)
+    transcriptChunks = []
+    startSarvamChunk()
+  }
 
-    sarvamSocket.onopen = () => {
-      console.log('[Sarvam] Proxy connected, setting up audio pipeline')
-      
-      if (!audioContext) {
-        audioContext = new AudioContext({ sampleRate: 16000 })
-      }
-      setupVolumeMeter(mediaStream!)
+  function startSarvamChunk() {
+    if (!isRecording.value || !mediaStream) return
 
-      const source = audioContext.createMediaStreamSource(mediaStream!)
-      
-      scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1)
-      source.connect(scriptProcessor)
-      scriptProcessor.connect(audioContext.destination)
+    const recorder = new MediaRecorder(mediaStream)
+    const audioChunks: BlobPart[] = []
 
-      let chunkCount = 0
-      scriptProcessor.onaudioprocess = (e) => {
-        if (!isRecording.value || !sarvamSocket || sarvamSocket.readyState !== WebSocket.OPEN) return
-        
-        const channelData = e.inputBuffer.getChannelData(0)
-        // Convert Float32Array to Int16Array (PCM 16-bit signed little-endian)
-        const int16Array = new Int16Array(channelData.length)
-        for (let i = 0; i < channelData.length; i++) {
-          const s = Math.max(-1, Math.min(1, channelData[i]))
-          int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF
-        }
-
-        // Convert to base64
-        const uint8Array = new Uint8Array(int16Array.buffer)
-        let binary = ''
-        for (let i = 0; i < uint8Array.length; i++) {
-          binary += String.fromCharCode(uint8Array[i])
-        }
-        const base64Audio = btoa(binary)
-
-        // Send audio message per Sarvam API spec
-        const message = {
-          audio: {
-            data: base64Audio,
-            sample_rate: '16000',
-            encoding: 'audio/wav'
-          }
-        }
-        sarvamSocket!.send(JSON.stringify(message))
-        chunkCount++
-        if (chunkCount % 10 === 0) {
-          console.log(`[Sarvam] Sent ${chunkCount} audio chunks`)
-        }
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        audioChunks.push(e.data)
       }
     }
 
-    sarvamSocket.onmessage = (event) => {
-      try {
-        const response = JSON.parse(event.data)
-        console.log('[Sarvam] Received:', response)
-        
-        if (response.type === 'data' && response.data?.transcript) {
-          transcript.value = response.data.transcript
-        } else if (response.type === 'error') {
-          console.error('[Sarvam] API Error:', response.data)
-          error.value = response.data?.error || 'Sarvam transcription error'
-        } else if (response.type === 'events') {
-          console.log('[Sarvam] Event:', response.data)
-        }
-      } catch (e) {
-        console.error('[Sarvam] Failed to parse message:', event.data)
+    recorder.onstop = () => {
+      if (audioChunks.length > 0) {
+        const audioBlob = new Blob(audioChunks, { type: recorder.mimeType || 'audio/webm' })
+        uploadChunkToSarvam(audioBlob)
       }
     }
 
-    sarvamSocket.onerror = () => {
-      console.error('[Sarvam] WebSocket error')
-      error.value = 'Sarvam connection failed. Check your API key.'
+    try {
+      recorder.start()
+      sarvamRecorder = recorder
+      
+      // Stop and cycle every 25 seconds to stay under Sarvam's 30s limit
+      chunkTimer = setTimeout(() => {
+        if (isRecording.value && recorder.state !== 'inactive') {
+          recorder.stop()
+          startSarvamChunk()
+        }
+      }, 25000)
+    } catch (e: any) {
+      console.error('[Sarvam] Failed to start MediaRecorder:', e)
+      error.value = 'Failed to start recording chunk: ' + e.message
       stopRecording()
     }
+  }
 
-    sarvamSocket.onclose = (event) => {
-      console.log('[Sarvam] WebSocket closed:', event.code, event.reason)
+  async function uploadChunkToSarvam(blob: Blob) {
+    if (!settingsStore.sarvamApiKey) return
+
+    const formData = new FormData()
+    formData.append('file', blob, 'audio_chunk.webm')
+    formData.append('model', 'saaras:v3')
+    formData.append('mode', 'transcribe')
+    formData.append('language_code', 'en-IN')
+
+    try {
+      console.log('[Sarvam] Uploading chunk:', blob.size, 'bytes')
+      const res = await fetch('https://api.sarvam.ai/speech-to-text', {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': settingsStore.sarvamApiKey
+        },
+        body: formData
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error('[Sarvam] REST Error:', errText)
+        if (isRecording.value) {
+          error.value = `Sarvam API Error: ${res.status} ${res.statusText}`
+          stopRecording()
+        }
+        return
+      }
+
+      const data = await res.json()
+      console.log('[Sarvam] Chunk transcript:', data)
+
+      if (data.transcript) {
+        transcriptChunks.push(data.transcript)
+        transcript.value = transcriptChunks.join(' ')
+      }
+    } catch (e: any) {
+      console.error('[Sarvam] Network error uploading chunk:', e)
       if (isRecording.value) {
+        error.value = 'Failed to connect to Sarvam API: ' + e.message
         stopRecording()
       }
     }
